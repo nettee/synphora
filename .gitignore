@@ -15,6 +15,9 @@ out/
 # production
 build/
 
+# Python
+*.pyc
+
 # misc
 .DS_Store
 *.pem
