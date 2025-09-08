@@ -23,8 +23,7 @@ import {
   Actions,
   Action,
 } from '@/components/ai-elements/actions';
-import { useState, Fragment } from 'react';
-import { useChat } from '@ai-sdk/react';
+import { useState, Fragment, useRef } from 'react';
 import { Response } from '@/components/ai-elements/response';
 import { GlobeIcon, RefreshCcwIcon, CopyIcon } from 'lucide-react';
 import {
@@ -39,6 +38,21 @@ import {
   ReasoningTrigger,
 } from '@/components/ai-elements/reasoning';
 import { Loader } from '@/components/ai-elements/loader';
+
+// 定义消息类型
+interface MessagePart {
+  type: 'text' | 'reasoning' | 'source-url';
+  text: string;
+  url?: string;
+}
+
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  parts: MessagePart[];
+}
+
+type ChatStatus = 'submitted' | 'streaming' | 'ready' | 'error';
 
 const models = [
   {
@@ -55,20 +69,150 @@ const ChatBotDemo = () => {
   const [input, setInput] = useState('');
   const [model, setModel] = useState<string>(models[0].value);
   const [webSearch, setWebSearch] = useState(false);
-  const { messages, sendMessage, status, regenerate } = useChat();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [status, setStatus] = useState<ChatStatus>('ready');
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // 发送消息函数
+  const sendMessage = async (text: string) => {
+    // 中止之前的请求
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    // 添加用户消息
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      parts: [{ type: 'text', text }]
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    setStatus('submitted');
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/agent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body reader');
+      }
+
+      setStatus('streaming');
+      let currentMessageId = '';
+      let currentContent = '';
+
+      const decoder = new TextDecoder();
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.trim() === '') continue;
+          
+          if (line.startsWith('data: ')) {
+            try {
+              const eventData = JSON.parse(line.slice(6));
+              
+              switch (eventData.type) {
+                case 'RUN_STARTED':
+                  // 开始新的助手消息
+                  currentMessageId = '';
+                  currentContent = '';
+                  break;
+                  
+                case 'TEXT_MESSAGE':
+                  const { message_id, content } = eventData.data;
+                  
+                  if (message_id !== currentMessageId) {
+                    // 新消息开始
+                    currentMessageId = message_id;
+                    currentContent = content;
+                    
+                    const assistantMessage: ChatMessage = {
+                      id: message_id,
+                      role: 'assistant',
+                      parts: [{ type: 'text', text: content }]
+                    };
+                    
+                    setMessages(prev => [...prev, assistantMessage]);
+                  } else {
+                    // 继续当前消息
+                    currentContent += content;
+                    
+                    setMessages(prev => prev.map(msg => 
+                      msg.id === message_id 
+                        ? {
+                            ...msg,
+                            parts: msg.parts.map(part => 
+                              part.type === 'text' 
+                                ? { ...part, text: currentContent }
+                                : part
+                            )
+                          }
+                        : msg
+                    ));
+                  }
+                  break;
+                  
+                case 'RUN_FINISHED':
+                  setStatus('ready');
+                  break;
+              }
+            } catch (error) {
+              console.error('Error parsing SSE data:', error);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Request was aborted');
+      } else {
+        console.error('Error sending message:', error);
+        setStatus('error');
+      }
+    }
+  };
+
+  // 重新生成最后一条消息
+  const regenerate = () => {
+    if (messages.length >= 2) {
+      const lastUserMessage = messages[messages.length - 2];
+      if (lastUserMessage.role === 'user') {
+        // 移除最后一条助手消息
+        setMessages(prev => prev.slice(0, -1));
+        // 重新发送用户消息
+        sendMessage(lastUserMessage.parts[0].text);
+      }
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim()) {
-      sendMessage(
-        { text: input },
-        {
-          body: {
-            model: model,
-            webSearch: webSearch,
-          },
-        },
-      );
+      sendMessage(input);
       setInput('');
     }
   };
@@ -112,7 +256,7 @@ const ChatBotDemo = () => {
                               </Response>
                             </MessageContent>
                           </Message>
-                          {message.role === 'assistant' && i === messages.length - 1 && (
+                          {message.role === 'assistant' && i === message.parts.length - 1 && message.id === messages.at(-1)?.id && (
                             <Actions className="mt-2">
                               <Action
                                 onClick={() => regenerate()}

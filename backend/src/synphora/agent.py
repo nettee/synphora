@@ -32,12 +32,7 @@ async def generate_agent_response(request: AgentRequest) -> AsyncGenerator[SseEv
 
     yield RunStartedEvent.new()
 
-    text_message_parts = request.text.split()
-    async for event in generate_text_message(text_message_parts):
-        yield event
-
     llm_messages = [
-        SystemMessage(content="You are a helpful assistant."),
         HumanMessage(content=request.text),
     ]
     async for event in generate_llm_message(llm_messages):

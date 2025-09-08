@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from datetime import datetime
@@ -7,6 +8,15 @@ from synphora.agent import AgentRequest, generate_agent_response
 from synphora.sse import SseEvent
 
 app = FastAPI(title="Synphora Agent Server", version="1.0.0")
+
+# 添加 CORS 中间件
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # 允许前端端口访问
+    allow_credentials=True,
+    allow_methods=["*"],  # 允许所有 HTTP 方法
+    allow_headers=["*"],  # 允许所有头部
+)
 
 
 class HealthResponse(BaseModel):
