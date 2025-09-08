@@ -24,6 +24,7 @@ import {
   Action,
 } from '@/components/ai-elements/actions';
 import { useState, Fragment, useRef } from 'react';
+import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { Response } from '@/components/ai-elements/response';
 import { GlobeIcon, RefreshCcwIcon, CopyIcon } from 'lucide-react';
 import {
@@ -93,8 +94,11 @@ const ChatBotDemo = () => {
     setMessages(prev => [...prev, userMessage]);
     setStatus('submitted');
 
+    let currentMessageId = '';
+    let currentContent = '';
+
     try {
-      const response = await fetch('http://127.0.0.1:8000/agent', {
+      await fetchEventSource('http://127.0.0.1:8000/agent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -103,37 +107,22 @@ const ChatBotDemo = () => {
           text,
         }),
         signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('No response body reader');
-      }
-
-      setStatus('streaming');
-      let currentMessageId = '';
-      let currentContent = '';
-
-      const decoder = new TextDecoder();
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        
-        if (done) break;
-        
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
-        
-        for (const line of lines) {
-          if (line.trim() === '') continue;
-          
-          if (line.startsWith('data: ')) {
-            try {
-              const eventData = JSON.parse(line.slice(6));
+        async onopen(response) {
+          if (response.ok && response.headers.get('content-type')?.includes('text/event-stream')) {
+            setStatus('streaming');
+            console.log('SSE connection opened');
+          } else if (response.status >= 400 && response.status < 500) {
+            // 客户端错误
+            throw new Error(`HTTP error! status: ${response.status}`);
+          } else {
+            // 其他错误
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+        },
+        onmessage(msg) {
+          try {
+            if (msg.data && msg.data.trim() !== '') {
+              const eventData = JSON.parse(msg.data);
               
               switch (eventData.type) {
                 case 'RUN_STARTED':
@@ -180,12 +169,21 @@ const ChatBotDemo = () => {
                   setStatus('ready');
                   break;
               }
-            } catch (error) {
-              console.error('Error parsing SSE data:', error);
             }
+          } catch (error) {
+            console.error('Error parsing SSE data:', error);
           }
-        }
-      }
+        },
+        onclose() {
+          console.log('SSE connection closed');
+          setStatus('ready');
+        },
+        onerror(err) {
+          console.error('SSE error:', err);
+          setStatus('error');
+          throw err; // 重新抛出错误以触发重连机制
+        },
+      });
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         console.log('Request was aborted');
