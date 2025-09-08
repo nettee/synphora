@@ -1,15 +1,13 @@
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Dict, Any, AsyncGenerator
-import json
-import asyncio
 from datetime import datetime
+
+from synphora.agent import AgentRequest, generate_agent_response
+from synphora.sse import SseEvent
 
 app = FastAPI(title="Synphora Agent Server", version="1.0.0")
 
-class AgentRequest(BaseModel):
-    text: str
 
 class HealthResponse(BaseModel):
     status: str
@@ -25,38 +23,19 @@ async def health_check():
         version="1.0.0"
     )
 
-async def generate_agent_response(request: AgentRequest) -> AsyncGenerator[str, None]:
-    """Simulate streaming agent response"""
-    response_text = f"Processing your message: '{request.text}'"
-    words = response_text.split()
-    
-    for i, word in enumerate(words):
-        data = {
-            "type": "token",
-            "content": word + " ",
-            "index": i,
-            "finished": False
-        }
-        yield f"data: {json.dumps(data)}\n\n"
-        await asyncio.sleep(0.1)  # Simulate processing delay
-    
-    # Send completion signal
-    completion_data = {
-        "type": "completion",
-        "content": "",
-        "finished": True,
-        "metadata": {
-            "total_tokens": len(words),
-            "processing_time": len(words) * 0.1
-        }
-    }
-    yield f"data: {json.dumps(completion_data)}\n\n"
-
 @app.post("/agent")
 async def agent_stream(request: AgentRequest):
     """Streaming agent endpoint"""
+
+    def format_sse_event(event: SseEvent) -> str:
+        return f"data: {event.to_data()}\n\n"
+
+    async def generate_sse():
+        async for event in generate_agent_response(request):
+            yield format_sse_event(event)
+
     return StreamingResponse(
-        generate_agent_response(request),
+        generate_sse(),
         media_type="text/plain",
         headers={
             "Cache-Control": "no-cache",
