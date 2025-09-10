@@ -39,6 +39,7 @@ import {
   ReasoningTrigger,
 } from '@/components/ai-elements/reasoning';
 import { Loader } from '@/components/ai-elements/loader';
+import { Suggestion, Suggestions } from '@/components/ai-elements/suggestion';
 
 // 定义消息类型
 interface MessagePart {
@@ -66,12 +67,33 @@ const models = [
   },
 ];
 
+const suggestions = [
+  {
+    value: "评价这篇文章",
+  },
+  {
+    value: "分析文章定位",
+  },
+  {
+    value: "撰写候选标题",
+  },
+];
+
 const ChatBotDemo = () => {
   const [input, setInput] = useState('');
   const [model, setModel] = useState<string>(models[0].value);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [status, setStatus] = useState<ChatStatus>('ready');
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const addUserMessage = (text: string) => {
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      parts: [{ type: 'text', text }]
+    };
+    setMessages(prev => [...prev, userMessage]);
+  };
 
   // 发送消息函数
   const sendMessage = async (text: string) => {
@@ -84,13 +106,8 @@ const ChatBotDemo = () => {
     abortControllerRef.current = controller;
 
     // 添加用户消息
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      parts: [{ type: 'text', text }]
-    };
+    addUserMessage(text);
     
-    setMessages(prev => [...prev, userMessage]);
     setStatus('submitted');
 
     let currentMessageId = '';
@@ -294,6 +311,17 @@ const ChatBotDemo = () => {
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
+
+        <Suggestions>
+          {suggestions.map((suggestion) => (
+            <Suggestion key={suggestion.value}
+              onClick={() => {
+                sendMessage(suggestion.value);
+              }}
+              suggestion={suggestion.value}
+            />
+          ))}
+        </Suggestions>
 
         <PromptInput onSubmit={handleSubmit} className="mt-4">
           <PromptInputTextarea
