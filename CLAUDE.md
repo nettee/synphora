@@ -4,21 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-### Development
+### Frontend Development (in `/frontend` directory)
 - `pnpm dev` - Start development server with Turbopack
 - `pnpm build` - Build production application with Turbopack
 - `pnpm start` - Start production server
 - `pnpm lint` - Run ESLint
 
-### Package Manager
-This project uses `pnpm` as the package manager.
+### Backend Development (in `/backend` directory)
+- `uv run uvicorn synphora.server:app --app-dir src --reload` - Start backend server with auto-reload
+- `curl -X GET "http://127.0.0.1:8000/health"` - Health check endpoint
+- `curl -X POST "http://127.0.0.1:8000/agent" -H "Content-Type: application/json" -d '{"text": "Hello", "model": "openai/gpt-4o", "webSearch": false}'` - Send chat request
+
+### Package Managers
+- Frontend: `pnpm` (Node.js/TypeScript)
+- Backend: `uv` (Python)
 
 ## Architecture
 
 ### Project Structure
-Synphora is a Next.js 15 application built with React 19 and TypeScript, featuring a chat interface powered by AI models.
+Synphora is a full-stack application with a Next.js frontend and FastAPI backend, featuring a chat interface powered by AI models.
 
-**Core Components:**
+**Frontend (`/frontend`):**
 - `/app` - Next.js App Router structure
   - `/api/chat/route.ts` - Chat API endpoint using AI SDK
   - `page.tsx` - Main chat interface component
@@ -27,7 +33,17 @@ Synphora is a Next.js 15 application built with React 19 and TypeScript, featuri
   - `/ai-elements` - Custom AI-focused components (conversation, messages, prompt input, etc.)
   - `/ui` - Shadcn/ui components (Radix UI-based)
 
+**Backend (`/backend`):**
+- `/src/synphora` - Python backend source
+  - `server.py` - FastAPI server with SSE endpoints
+  - `agent.py` - AI agent implementation
+  - `llm.py` - Language model integration
+  - `sse.py` - Server-sent events utilities
+- `pyproject.toml` - Python project configuration
+
 ### Technology Stack
+
+**Frontend:**
 - **Framework:** Next.js 15 with App Router and Turbopack
 - **UI Library:** Shadcn/ui (New York style) with Radix UI primitives
 - **Styling:** Tailwind CSS v4 with stone base color
@@ -35,23 +51,30 @@ Synphora is a Next.js 15 application built with React 19 and TypeScript, featuri
 - **Icons:** Lucide React
 - **State Management:** React hooks with useChat from AI SDK
 
-### AI Integration
-- Chat API supports multiple models (GPT-4o, Deepseek R1)
-- Web search capability via Perplexity Sonar
-- Streaming responses with source citations and reasoning
-- Message parts support text, reasoning, and source-url types
+**Backend:**
+- **Framework:** FastAPI with Python 3.13+
+- **Package Manager:** uv for dependency management
+- **AI Integration:** LangChain Core, LangChain OpenAI, LangGraph
+- **Server:** Uvicorn ASGI server
+- **Communication:** Server-Sent Events (SSE) for real-time streaming
 
-### Styling System
-- Uses Tailwind CSS v4 with custom configuration
-- Shadcn/ui components with CSS variables for theming
-- Custom AI-elements components for chat interface
-- Path aliases configured: `@/*` maps to root directory
+### AI Integration
+- Backend provides HTTP SSE endpoints for AI agent communication
+- Support for multiple models (OpenAI GPT-4o, etc.)
+- Web search capability integration
+- Streaming responses with real-time communication
+- LangChain-based agent architecture with LangGraph
+
+### Communication Flow
+- Frontend communicates with backend via HTTP SSE
+- Backend `/agent` endpoint accepts POST requests with text, model, and webSearch parameters
+- Real-time streaming responses from backend to frontend
+- Health check endpoint at `/health`
 
 ### Key Features
-- Real-time streaming chat interface
-- Model selection (GPT-4o, Deepseek R1)
-- Web search integration toggle
-- Source citations display
-- Reasoning step visualization
-- Message actions (retry, copy)
-- Responsive design with scroll management
+- Full-stack AI chat application
+- Real-time streaming chat interface via SSE
+- Model selection and web search integration
+- Modular frontend components for AI interactions
+- Scalable backend architecture with FastAPI
+- Development-friendly with hot reload on both frontend and backend
