@@ -11,7 +11,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pnpm lint` - Run ESLint
 
 ### Backend Development (in `/backend` directory)
-- `uv run uvicorn synphora.server:app --app-dir src --reload` - Start backend server with auto-reload
+- `uv run workflow` - Run workflow.py with default test case
+- `uv run server` - Start backend server with auto-reload
+- `uv run dev` - Start backend server with auto-reload (all interfaces)
 - `curl -X GET "http://127.0.0.1:8000/health"` - Health check endpoint
 - `curl -X POST "http://127.0.0.1:8000/agent" -H "Content-Type: application/json" -d '{"text": "Hello", "model": "openai/gpt-4o", "webSearch": false}'` - Send chat request
 

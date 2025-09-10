@@ -2,7 +2,7 @@
 
 启动服务：
 ```
-uv run uvicorn synphora.server:app --app-dir src --reload
+uv run server
 ```
 
 健康检查：
