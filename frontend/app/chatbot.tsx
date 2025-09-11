@@ -50,20 +50,8 @@ import {
 import { Loader } from '@/components/ai-elements/loader';
 import { Suggestion, Suggestions } from '@/components/ai-elements/suggestion';
 
-// 定义消息类型
-interface MessagePart {
-  type: 'text' | 'reasoning' | 'source-url';
-  text: string;
-  url?: string;
-}
-
-interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  parts: MessagePart[];
-}
-
-type ChatStatus = 'submitted' | 'streaming' | 'ready' | 'error';
+import { MessagePart, ChatMessage, ChatStatus, MessageRole, ArtifactData } from '@/lib/types';
+import { testMessages, testArtifact } from '@/lib/test-data';
 
 const models = [
   {
@@ -91,15 +79,17 @@ const suggestions = [
 const ChatBotDemo = () => {
   const [input, setInput] = useState('');
   const [model, setModel] = useState<string>(models[0].value);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(testMessages);
   const [status, setStatus] = useState<ChatStatus>('ready');
-  const [isArtifactCollapsed, setIsArtifactCollapsed] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const [isArtifactCollapsed, setIsArtifactCollapsed] = useState(false);
+  const [artifact, setArtifact] = useState<ArtifactData>(testArtifact);
 
   const addUserMessage = (text: string) => {
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
-      role: 'user',
+      role: MessageRole.USER,
       parts: [{ type: 'text', text }]
     };
     setMessages(prev => [...prev, userMessage]);
@@ -167,7 +157,7 @@ const ChatBotDemo = () => {
                     
                     const assistantMessage: ChatMessage = {
                       id: message_id,
-                      role: 'assistant',
+                      role: MessageRole.ASSISTANT,
                       parts: [{ type: 'text', text: content }]
                     };
                     
@@ -224,7 +214,7 @@ const ChatBotDemo = () => {
   const regenerate = () => {
     if (messages.length >= 2) {
       const lastUserMessage = messages[messages.length - 2];
-      if (lastUserMessage.role === 'user') {
+      if (lastUserMessage.role === MessageRole.USER) {
         // 移除最后一条助手消息
         setMessages(prev => prev.slice(0, -1));
         // 重新发送用户消息
@@ -253,7 +243,7 @@ const ChatBotDemo = () => {
               <ConversationContent>
                 {messages.map((message) => (
                   <div key={message.id}>
-                    {message.role === 'assistant' && message.parts.filter((part) => part.type === 'source-url').length > 0 && (
+                    {message.role === MessageRole.ASSISTANT && message.parts.filter((part) => part.type === 'source-url').length > 0 && (
                       <Sources>
                         <SourcesTrigger
                           count={
@@ -285,7 +275,7 @@ const ChatBotDemo = () => {
                                   </Response>
                                 </MessageContent>
                               </Message>
-                              {message.role === 'assistant' && i === message.parts.length - 1 && message.id === messages.at(-1)?.id && (
+                              {message.role === MessageRole.ASSISTANT && i === message.parts.length - 1 && message.id === messages.at(-1)?.id && (
                                 <Actions className="mt-2">
                                   <Action
                                     onClick={() => regenerate()}
@@ -375,8 +365,8 @@ const ChatBotDemo = () => {
           <Artifact className="h-full">
             <ArtifactHeader>
               <div>
-                <ArtifactTitle>Dijkstra's Algorithm Implementation</ArtifactTitle>
-                {/* <ArtifactDescription>Updated 1 minute ago</ArtifactDescription> */}
+                <ArtifactTitle>{artifact.title}</ArtifactTitle>
+                <ArtifactDescription>{artifact.description}</ArtifactDescription>
               </div>
               <ArtifactActions>
                 <ArtifactAction 
@@ -388,7 +378,7 @@ const ChatBotDemo = () => {
               </ArtifactActions>
             </ArtifactHeader>
             <ArtifactContent className="h-full">
-              This is the artifact content.
+              {artifact.content}
             </ArtifactContent>
           </Artifact>
         </div>
