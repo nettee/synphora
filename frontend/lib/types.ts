@@ -20,6 +20,7 @@ export type ChatStatus = 'submitted' | 'streaming' | 'ready' | 'error';
 
 export enum ArtifactType {
   ORIGINAL = 'original',
+  COMMENT = 'comment',
 }
 
 export interface ArtifactData {
@@ -27,6 +28,6 @@ export interface ArtifactData {
   role: MessageRole;
   type: ArtifactType;
   title: string;
-  description: string | null;
+  description?: string;
   content: string;
 }

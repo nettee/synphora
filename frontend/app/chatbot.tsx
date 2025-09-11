@@ -35,7 +35,7 @@ import {
 import { useState, Fragment, useRef } from 'react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { Response } from '@/components/ai-elements/response';
-import { GlobeIcon, RefreshCcwIcon, CopyIcon, ChevronRightIcon, ChevronLeftIcon } from 'lucide-react';
+import { GlobeIcon, RefreshCcwIcon, CopyIcon, ChevronRightIcon, ChevronLeftIcon, XIcon } from 'lucide-react';
 import {
   Source,
   Sources,
@@ -50,8 +50,8 @@ import {
 import { Loader } from '@/components/ai-elements/loader';
 import { Suggestion, Suggestions } from '@/components/ai-elements/suggestion';
 
-import { MessagePart, ChatMessage, ChatStatus, MessageRole, ArtifactData } from '@/lib/types';
-import { testMessages, testArtifact } from '@/lib/test-data';
+import { MessagePart, ChatMessage, ChatStatus, MessageRole, ArtifactData, ArtifactType } from '@/lib/types';
+import { testMessages, testArtifacts } from '@/lib/test-data';
 
 const models = [
   {
@@ -84,7 +84,98 @@ const ChatBotDemo = () => {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const [isArtifactCollapsed, setIsArtifactCollapsed] = useState(false);
-  const [artifact, setArtifact] = useState<ArtifactData>(testArtifact);
+  const [artifacts, setArtifacts] = useState<ArtifactData[]>(testArtifacts);
+  const [currentArtifactId, setCurrentArtifactId] = useState<string>(testArtifacts[0].id);
+
+  // 获取当前工件
+  const currentArtifact = artifacts.find(artifact => artifact.id === currentArtifactId) || artifacts[0];
+
+  // 处理工件选择
+  const handleArtifactSelect = (artifactId: string) => {
+    setCurrentArtifactId(artifactId);
+    setIsArtifactCollapsed(false); // 选择工件后自动展开
+  };
+
+  // 工件列表组件
+  const ArtifactList = () => {
+    const userArtifacts = artifacts.filter(artifact => artifact.role === MessageRole.USER);
+    const assistantArtifacts = artifacts.filter(artifact => artifact.role === MessageRole.ASSISTANT);
+
+    const renderArtifactItem = (artifact: ArtifactData) => (
+      <div
+        key={artifact.id}
+        onClick={() => handleArtifactSelect(artifact.id)}
+        className="p-3 rounded-lg border border-gray-200 cursor-pointer transition-all duration-200 hover:shadow-sm hover:border-gray-300 hover:bg-gray-50"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-gray-900 truncate">
+              {artifact.title}
+            </div>
+            {artifact.description && (
+              <div className="text-xs text-gray-600 mt-1 line-clamp-2">
+                {artifact.description}
+              </div>
+            )}
+          </div>
+          <div className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
+            artifact.type === ArtifactType.ORIGINAL 
+              ? 'bg-green-100 text-green-700' 
+              : 'bg-blue-100 text-blue-700'
+          }`}>
+            {artifact.type === ArtifactType.ORIGINAL ? '原文' : '评论'}
+          </div>
+        </div>
+      </div>
+    );
+
+    return (
+      <div className="h-full flex flex-col bg-white border border-gray-200 rounded-lg">
+        <div className="p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+          <h3 className="text-sm font-medium text-gray-900">所有文件</h3>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {/* 用户添加的部分 */}
+          {userArtifacts.length > 0 && (
+            <div className="p-3 pb-0">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+                  你添加的
+                </div>
+              </div>
+              <div className="space-y-2">
+                {userArtifacts.map(renderArtifactItem)}
+              </div>
+            </div>
+          )}
+          
+          {/* AI生成的部分 */}
+          {assistantArtifacts.length > 0 && (
+            <div className="p-3">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+                  生成的
+                </div>
+              </div>
+              <div className="space-y-2">
+                {assistantArtifacts.map(renderArtifactItem)}
+              </div>
+            </div>
+          )}
+          
+          {/* 空状态 */}
+          {artifacts.length === 0 && (
+            <div className="flex-1 flex items-center justify-center p-6">
+              <div className="text-center text-gray-500">
+                <div className="text-sm">暂无文件</div>
+                <div className="text-xs mt-1">开始对话来创建文件</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const addUserMessage = (text: string) => {
     const userMessage: ChatMessage = {
@@ -360,27 +451,31 @@ const ChatBotDemo = () => {
         </div>
         <div 
           data-role="artifact-container" 
-          className={`h-full ${ isArtifactCollapsed ? 'w-md' : 'w-2/3' }`}
+          className={`h-full transition-all duration-300 ${ isArtifactCollapsed ? 'w-96' : 'w-2/3' }`}
         >
-          <Artifact className="h-full">
-            <ArtifactHeader>
-              <div>
-                <ArtifactTitle>{artifact.title}</ArtifactTitle>
-                <ArtifactDescription>{artifact.description}</ArtifactDescription>
-              </div>
-              <ArtifactActions>
-                <ArtifactAction 
-                  icon={isArtifactCollapsed ? ChevronLeftIcon : ChevronRightIcon} 
-                  label={isArtifactCollapsed ? "展开" : "收起"} 
-                  tooltip={isArtifactCollapsed ? "展开面板" : "收起面板"}
-                  onClick={() => setIsArtifactCollapsed(!isArtifactCollapsed)}
-                />
-              </ArtifactActions>
-            </ArtifactHeader>
-            <ArtifactContent className="h-full">
-              {artifact.content}
-            </ArtifactContent>
-          </Artifact>
+          {isArtifactCollapsed ? (
+            <ArtifactList />
+          ) : (
+            <Artifact className="h-full">
+              <ArtifactHeader>
+                <div>
+                  <ArtifactTitle>{currentArtifact.title}</ArtifactTitle>
+                  <ArtifactDescription>{currentArtifact.description}</ArtifactDescription>
+                </div>
+                <ArtifactActions>
+                  <ArtifactAction 
+                    icon={XIcon} 
+                    label="关闭" 
+                    tooltip="关闭面板"
+                    onClick={() => setIsArtifactCollapsed(true)}
+                  />
+                </ArtifactActions>
+              </ArtifactHeader>
+              <ArtifactContent className="h-full">
+                {currentArtifact.content}
+              </ArtifactContent>
+            </Artifact>
+          )}
         </div>
       </div>
     </div>

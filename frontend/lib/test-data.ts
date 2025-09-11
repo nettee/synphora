@@ -23,11 +23,26 @@ export const testMessages: ChatMessage[] = [
   },
 ];
 
-export const testArtifact: ArtifactData = {
-  id: '1',
-  role: MessageRole.USER,
-  type: ArtifactType.ORIGINAL,
-  title: 'Dijkstra\'s Algorithm Implementation',
-  description: '文章原文',
-  content: 'This is the artifact content.',
-};
+export const testArtifacts: ArtifactData[] = [
+  {
+    id: '1',
+    role: MessageRole.USER,
+    type: ArtifactType.ORIGINAL,
+    title: 'Dijkstra\'s Algorithm Implementation',
+    content: 'This is the artifact content.',
+  },
+  {
+    id: '2',
+    role: MessageRole.ASSISTANT,
+    type: ArtifactType.COMMENT,
+    title: 'React Component Example',
+    content: 'import React from "react";\n\nfunction Example() {\n  return <div>Hello World</div>;\n}\n\nexport default Example;',
+  },
+  {
+    id: '3',
+    role: MessageRole.ASSISTANT,
+    type: ArtifactType.COMMENT,
+    title: 'API Response Schema',
+    content: '{\n  "status": "success",\n  "data": {\n    "message": "Hello from API"\n  }\n}',
+  },
+];
