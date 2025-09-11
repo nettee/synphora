@@ -119,4 +119,45 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* 因为 Tailwind CSS 重置了所有的样式，所以 Streamdown 的样式需要在这里定义 */
+  .streamdown ul {
+    @apply list-disc list-inside space-y-1 ml-4;
+  }
+  
+  .streamdown ol {
+    @apply list-decimal list-inside space-y-1 ml-4;
+  }
+  
+  .streamdown li {
+    @apply text-foreground;
+  }
+  
+  .streamdown h1 {
+    @apply text-2xl font-bold mt-6 mb-4;
+  }
+  
+  .streamdown h2 {
+    @apply text-xl font-semibold mt-5 mb-3;
+  }
+  
+  .streamdown h3 {
+    @apply text-lg font-medium mt-4 mb-2;
+  }
+  
+  .streamdown p {
+    @apply mb-3 text-foreground leading-relaxed;
+  }
+  
+  .streamdown code {
+    @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono;
+  }
+  
+  .streamdown pre {
+    @apply bg-muted p-4 rounded-lg overflow-x-auto;
+  }
+  
+  .streamdown blockquote {
+    @apply border-l-4 border-border pl-4 my-4 italic text-muted-foreground;
+  }
 }

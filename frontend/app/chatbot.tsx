@@ -52,6 +52,7 @@ import { Suggestion, Suggestions } from '@/components/ai-elements/suggestion';
 
 import { MessagePart, ChatMessage, ChatStatus, MessageRole, ArtifactData, ArtifactType } from '@/lib/types';
 import { testMessages, testArtifacts } from '@/lib/test-data';
+import { Streamdown } from 'streamdown';
 
 const models = [
   {
@@ -472,7 +473,8 @@ const ChatBotDemo = () => {
                 </ArtifactActions>
               </ArtifactHeader>
               <ArtifactContent className="h-full">
-                {currentArtifact.content}
+                {/* 定义 classname 为 streamdown，这样 globals.css 中的样式会生效 */}
+                <Streamdown className="streamdown">{currentArtifact.content}</Streamdown>
               </ArtifactContent>
             </Artifact>
           )}
