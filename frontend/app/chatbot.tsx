@@ -23,10 +23,19 @@ import {
   Actions,
   Action,
 } from '@/components/ai-elements/actions';
+import {
+  Artifact,
+  ArtifactAction,
+  ArtifactActions,
+  ArtifactContent,
+  ArtifactDescription,
+  ArtifactHeader,
+  ArtifactTitle,
+} from '@/components/ai-elements/artifact';
 import { useState, Fragment, useRef } from 'react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { Response } from '@/components/ai-elements/response';
-import { GlobeIcon, RefreshCcwIcon, CopyIcon } from 'lucide-react';
+import { GlobeIcon, RefreshCcwIcon, CopyIcon, ChevronRightIcon, ChevronLeftIcon } from 'lucide-react';
 import {
   Source,
   Sources,
@@ -84,6 +93,7 @@ const ChatBotDemo = () => {
   const [model, setModel] = useState<string>(models[0].value);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [status, setStatus] = useState<ChatStatus>('ready');
+  const [isArtifactCollapsed, setIsArtifactCollapsed] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const addUserMessage = (text: string) => {
@@ -232,125 +242,156 @@ const ChatBotDemo = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 relative size-full h-screen">
-      <div className="flex flex-col h-full">
-        <Conversation className="h-full">
-          <ConversationContent>
-            {messages.map((message) => (
-              <div key={message.id}>
-                {message.role === 'assistant' && message.parts.filter((part) => part.type === 'source-url').length > 0 && (
-                  <Sources>
-                    <SourcesTrigger
-                      count={
-                        message.parts.filter(
-                          (part) => part.type === 'source-url',
-                        ).length
-                      }
-                    />
-                    {message.parts.filter((part) => part.type === 'source-url').map((part, i) => (
-                      <SourcesContent key={`${message.id}-${i}`}>
-                        <Source
-                          key={`${message.id}-${i}`}
-                          href={part.url}
-                          title={part.url}
+    <div className="w-full h-screen mx-auto p-6">
+      <div className="w-full h-full flex gap-4">
+        <div 
+          data-role="chatbot-container" 
+          className={`flex flex-col h-full ${ isArtifactCollapsed ? 'flex-1' : 'w-1/3' }`}
+        >
+          <div className="w-full max-w-3xl h-full mx-auto flex flex-col">
+            <Conversation className="h-full">
+              <ConversationContent>
+                {messages.map((message) => (
+                  <div key={message.id}>
+                    {message.role === 'assistant' && message.parts.filter((part) => part.type === 'source-url').length > 0 && (
+                      <Sources>
+                        <SourcesTrigger
+                          count={
+                            message.parts.filter(
+                              (part) => part.type === 'source-url',
+                            ).length
+                          }
                         />
-                      </SourcesContent>
-                    ))}
-                  </Sources>
-                )}
-                {message.parts.map((part, i) => {
-                  switch (part.type) {
-                    case 'text':
-                      return (
-                        <Fragment key={`${message.id}-${i}`}>
-                          <Message from={message.role}>
-                            <MessageContent>
-                              <Response>
-                                {part.text}
-                              </Response>
-                            </MessageContent>
-                          </Message>
-                          {message.role === 'assistant' && i === message.parts.length - 1 && message.id === messages.at(-1)?.id && (
-                            <Actions className="mt-2">
-                              <Action
-                                onClick={() => regenerate()}
-                                label="Retry"
-                              >
-                                <RefreshCcwIcon className="size-3" />
-                              </Action>
-                              <Action
-                                onClick={() =>
-                                  navigator.clipboard.writeText(part.text)
-                                }
-                                label="Copy"
-                              >
-                                <CopyIcon className="size-3" />
-                              </Action>
-                            </Actions>
-                          )}
-                        </Fragment>
-                      );
-                    case 'reasoning':
-                      return (
-                        <Reasoning
-                          key={`${message.id}-${i}`}
-                          className="w-full"
-                          isStreaming={status === 'streaming' && i === message.parts.length - 1 && message.id === messages.at(-1)?.id}
-                        >
-                          <ReasoningTrigger />
-                          <ReasoningContent>{part.text}</ReasoningContent>
-                        </Reasoning>
-                      );
-                    default:
-                      return null;
-                  }
-                })}
+                        {message.parts.filter((part) => part.type === 'source-url').map((part, i) => (
+                          <SourcesContent key={`${message.id}-${i}`}>
+                            <Source
+                              key={`${message.id}-${i}`}
+                              href={part.url}
+                              title={part.url}
+                            />
+                          </SourcesContent>
+                        ))}
+                      </Sources>
+                    )}
+                    {message.parts.map((part, i) => {
+                      switch (part.type) {
+                        case 'text':
+                          return (
+                            <Fragment key={`${message.id}-${i}`}>
+                              <Message from={message.role}>
+                                <MessageContent>
+                                  <Response>
+                                    {part.text}
+                                  </Response>
+                                </MessageContent>
+                              </Message>
+                              {message.role === 'assistant' && i === message.parts.length - 1 && message.id === messages.at(-1)?.id && (
+                                <Actions className="mt-2">
+                                  <Action
+                                    onClick={() => regenerate()}
+                                    label="Retry"
+                                  >
+                                    <RefreshCcwIcon className="size-3" />
+                                  </Action>
+                                  <Action
+                                    onClick={() =>
+                                      navigator.clipboard.writeText(part.text)
+                                    }
+                                    label="Copy"
+                                  >
+                                    <CopyIcon className="size-3" />
+                                  </Action>
+                                </Actions>
+                              )}
+                            </Fragment>
+                          );
+                        case 'reasoning':
+                          return (
+                            <Reasoning
+                              key={`${message.id}-${i}`}
+                              className="w-full"
+                              isStreaming={status === 'streaming' && i === message.parts.length - 1 && message.id === messages.at(-1)?.id}
+                            >
+                              <ReasoningTrigger />
+                              <ReasoningContent>{part.text}</ReasoningContent>
+                            </Reasoning>
+                          );
+                        default:
+                          return null;
+                      }
+                    })}
+                  </div>
+                ))}
+                {status === 'submitted' && <Loader />}
+              </ConversationContent>
+              <ConversationScrollButton />
+            </Conversation>
+
+            <Suggestions>
+              {suggestions.map((suggestion) => (
+                <Suggestion key={suggestion.value}
+                  onClick={() => {
+                    sendMessage(suggestion.value);
+                  }}
+                  suggestion={suggestion.value}
+                />
+              ))}
+            </Suggestions>
+
+            <PromptInput onSubmit={handleSubmit} className="mt-4">
+              <PromptInputTextarea
+                onChange={(e) => setInput(e.target.value)}
+                value={input}
+              />
+              <PromptInputToolbar>
+              <PromptInputTools>
+                  <PromptInputModelSelect
+                    onValueChange={(value) => {
+                      setModel(value);
+                    }}
+                    value={model}
+                  >
+                    <PromptInputModelSelectTrigger>
+                      <PromptInputModelSelectValue />
+                    </PromptInputModelSelectTrigger>
+                    <PromptInputModelSelectContent>
+                      {models.map((model) => (
+                        <PromptInputModelSelectItem key={model.value} value={model.value}>
+                          {model.name}
+                        </PromptInputModelSelectItem>
+                      ))}
+                    </PromptInputModelSelectContent>
+                  </PromptInputModelSelect>
+                </PromptInputTools>
+                <PromptInputSubmit disabled={!input} status={status} />
+              </PromptInputToolbar>
+            </PromptInput>
+          </div>
+        </div>
+        <div 
+          data-role="artifact-container" 
+          className={`h-full ${ isArtifactCollapsed ? 'w-md' : 'w-2/3' }`}
+        >
+          <Artifact className="h-full">
+            <ArtifactHeader>
+              <div>
+                <ArtifactTitle>Dijkstra's Algorithm Implementation</ArtifactTitle>
+                {/* <ArtifactDescription>Updated 1 minute ago</ArtifactDescription> */}
               </div>
-            ))}
-            {status === 'submitted' && <Loader />}
-          </ConversationContent>
-          <ConversationScrollButton />
-        </Conversation>
-
-        <Suggestions>
-          {suggestions.map((suggestion) => (
-            <Suggestion key={suggestion.value}
-              onClick={() => {
-                sendMessage(suggestion.value);
-              }}
-              suggestion={suggestion.value}
-            />
-          ))}
-        </Suggestions>
-
-        <PromptInput onSubmit={handleSubmit} className="mt-4">
-          <PromptInputTextarea
-            onChange={(e) => setInput(e.target.value)}
-            value={input}
-          />
-          <PromptInputToolbar>
-          <PromptInputTools>
-              <PromptInputModelSelect
-                onValueChange={(value) => {
-                  setModel(value);
-                }}
-                value={model}
-              >
-                <PromptInputModelSelectTrigger>
-                  <PromptInputModelSelectValue />
-                </PromptInputModelSelectTrigger>
-                <PromptInputModelSelectContent>
-                  {models.map((model) => (
-                    <PromptInputModelSelectItem key={model.value} value={model.value}>
-                      {model.name}
-                    </PromptInputModelSelectItem>
-                  ))}
-                </PromptInputModelSelectContent>
-              </PromptInputModelSelect>
-            </PromptInputTools>
-            <PromptInputSubmit disabled={!input} status={status} />
-          </PromptInputToolbar>
-        </PromptInput>
+              <ArtifactActions>
+                <ArtifactAction 
+                  icon={isArtifactCollapsed ? ChevronLeftIcon : ChevronRightIcon} 
+                  label={isArtifactCollapsed ? "展开" : "收起"} 
+                  tooltip={isArtifactCollapsed ? "展开面板" : "收起面板"}
+                  onClick={() => setIsArtifactCollapsed(!isArtifactCollapsed)}
+                />
+              </ArtifactActions>
+            </ArtifactHeader>
+            <ArtifactContent className="h-full">
+              This is the artifact content.
+            </ArtifactContent>
+          </Artifact>
+        </div>
       </div>
     </div>
   );
