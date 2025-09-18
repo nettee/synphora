@@ -4,6 +4,7 @@ import { ArtifactData, ArtifactType, MessageRole } from "@/lib/types";
 import { useState } from "react";
 import SynphoraPage from "./synphora";
 import WelcomePage from "./welcome";
+import { countMeaningfulWords } from "@/lib/markdown";
 
 interface FileContent {
   file: File;
@@ -23,7 +24,7 @@ const convertFilesToArtifacts = (
     role: MessageRole.USER,
     type: ArtifactType.ORIGINAL,
     title: fileContent.file.name,
-    description: `文件大小: ${(fileContent.file.size / 1024).toFixed(2)} KB`,
+    description: `${countMeaningfulWords(fileContent.content)} 字`,
     content: fileContent.content,
   }));
 };
