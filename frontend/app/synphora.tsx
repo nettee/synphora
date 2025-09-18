@@ -4,8 +4,7 @@ import { useState } from "react";
 
 import { ArtifactDetail, ArtifactList } from "@/components/artifact";
 import { Chatbot } from "@/components/chatbot";
-import { testArtifacts, testMessages } from "@/lib/test-data";
-import { ArtifactData } from "@/lib/types";
+import { ArtifactData, ChatMessage, MessageRole } from "@/lib/types";
 
 enum ArtifactStatus {
   COLLAPSED = "collapsed",
@@ -43,7 +42,26 @@ const useArtifacts = (
   };
 };
 
-const SynphoraPage = () => {
+const SynphoraPage = ({ 
+  initialArtifacts,
+  initialArtifactStatus = ArtifactStatus.EXPANDED
+}: {
+  initialArtifacts: ArtifactData[];
+  initialArtifactStatus?: ArtifactStatus;
+}) => {
+
+  if (initialArtifacts.length === 0) {
+    throw new Error("initialArtifacts is empty");
+  }
+
+  const initialMessages: ChatMessage[] = [
+    {
+      id: '2',
+      role: MessageRole.ASSISTANT,
+      parts: [{ type: 'text', text: '你好，我是 Synphora，你的写作助手。请提出你对于文章分析和润色的需求。' }],
+    },
+  ];
+
   const {
     artifacts,
     artifactStatus,
@@ -52,9 +70,9 @@ const SynphoraPage = () => {
     expandArtifact,
     setCurrentArtifactId,
   } = useArtifacts(
-    ArtifactStatus.COLLAPSED,
-    testArtifacts,
-    testArtifacts[0].id
+    initialArtifactStatus,
+    initialArtifacts,
+    initialArtifacts[0]?.id,
   );
 
   const openArtifact = (artifactId: string) => {
@@ -80,7 +98,7 @@ const SynphoraPage = () => {
             artifactStatus === ArtifactStatus.COLLAPSED ? "flex-1" : "w-1/3"
           }`}
         >
-          <Chatbot initialMessages={testMessages} />
+          <Chatbot initialMessages={initialMessages} />
         </div>
         <div
           data-role="artifact-container"
