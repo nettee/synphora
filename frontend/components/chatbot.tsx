@@ -35,7 +35,6 @@ import { ChatMessage, ChatStatus, MessageRole } from "@/lib/types";
 import { Message, MessageContent } from "@/components/ai-elements/message";
 import { Actions, Action } from "@/components/ai-elements/actions";
 import { Loader } from "@/components/ai-elements/loader";
-import { testMessages } from "@/lib/test-data";
 
 const models = [
   {
@@ -60,10 +59,14 @@ const suggestions = [
   },
 ];
 
-export const Chatbot = ({}: {}) => {
+export const Chatbot = ({
+  initialMessages = [],
+}: {
+  initialMessages: ChatMessage[];
+}) => {
   const [input, setInput] = useState("");
   const [model, setModel] = useState<string>(models[0].value);
-  const [messages, setMessages] = useState<ChatMessage[]>(testMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [status, setStatus] = useState<ChatStatus>("ready");
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -218,7 +221,7 @@ export const Chatbot = ({}: {}) => {
   };
 
   return (
-    <div className="w-full max-w-3xl h-full mx-auto flex flex-col">
+    <div data-role="chatbot" className="w-full max-w-3xl h-full mx-auto flex flex-col">
       <Conversation className="h-full">
         <ConversationContent>
           {messages.map((message) => (

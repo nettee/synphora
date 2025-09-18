@@ -20,7 +20,7 @@ export const ArtifactDetail = ({
   onCloseArtifact: () => void;
 }) => {
   return (
-    <Artifact className="h-full">
+    <Artifact data-role="artifact-detail" className="h-full">
       <ArtifactHeader>
         <div>
           <ArtifactTitle>{artifact.title}</ArtifactTitle>
@@ -93,7 +93,7 @@ export const ArtifactList = ({
   );
 
   return (
-    <div className="h-full flex flex-col bg-white border border-gray-200 rounded-lg">
+    <div data-role="artifact-list" className="h-full flex flex-col bg-white border border-gray-200 rounded-lg">
       <div className="p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
         <h3 className="text-sm font-medium text-gray-900">所有文件</h3>
       </div>

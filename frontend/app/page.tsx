@@ -1,7 +1,7 @@
 'use client';
 
-import ChatBotDemo from './chatbot';
+import SynphoraPage from './synphora';
 
 export default function Home() {
-  return <ChatBotDemo />;
+  return <SynphoraPage />;
 }
