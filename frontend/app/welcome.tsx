@@ -159,43 +159,43 @@ export default function WelcomePage({ onFilesUploaded }: WelcomePageProps) {
 
         {/* 上传区域 */}
         <div className="flex-1 flex flex-col">
-          <div className="bg-card border-1 border-border p-6 mb-6">
-            <div
-              className={`
-                border-1 border-dashed rounded-lg p-8 text-center transition-all duration-200
-                ${isDragActive 
-                  ? 'border-foreground bg-muted/50' 
-                  : 'border-muted-foreground/30 hover:border-muted-foreground/50 hover:bg-muted/30'
-                }
-              `}
-              onDragEnter={handleDragIn}
-              onDragLeave={handleDragOut}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-            >
-              <div className="mb-6">
-                <svg
-                  className="mx-auto h-12 w-12 text-muted-foreground"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                  />
-                </svg>
-              </div>
-              
-              <h3 className="text-lg font-medium text-foreground mb-2">
-                {isDragActive ? '释放文件' : '上传你的文章'}
-              </h3>
-              <p className="text-muted-foreground text-sm mb-6">
-                拖拽文件或点击选择
-              </p>
-              
+          <div
+            className={`
+              flex flex-col items-center justify-center border-1 border-dashed rounded-lg p-8 text-center transition-all duration-200 bg-gray-50 mb-6
+              ${isDragActive 
+                ? 'border-foreground bg-muted/50' 
+                : 'border-muted-foreground/30 hover:border-muted-foreground/50'
+              }
+            `}
+            onDragEnter={handleDragIn}
+            onDragLeave={handleDragOut}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+          >
+            <div className="mb-6">
+              <svg
+                className="mx-auto h-12 w-12 text-muted-foreground"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                />
+              </svg>
+            </div>
+            
+            <h3 className="text-lg font-medium text-foreground mb-2">
+              {isDragActive ? '释放文件以上传' : '上传你的文章'}
+            </h3>
+            <p className="text-muted-foreground text-sm mb-6">
+              拖拽文件或点击选择，支持 .txt 和 .md 文件
+            </p>
+
+            <div className="flex gap-2">
               <Button
                 onClick={handleSelectFiles}
                 variant="outline"
@@ -203,16 +203,25 @@ export default function WelcomePage({ onFilesUploaded }: WelcomePageProps) {
               >
                 选择文件
               </Button>
-              
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept=".txt,.md"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
+
+              <Button
+                variant="outline"
+                className="font-medium text-foreground bg-gradient-to-r from-blue-100 via-purple-100 to-pink-100 bg-clip-border border-1 border-transparent bg-origin-border  relative overflow-hidden"
+              >
+                <span className="text-foreground">
+                  AI 生成示例文章
+                </span>
+              </Button>
             </div>
+            
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".txt,.md"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
           </div>
 
           {/* 上传进度 */}
