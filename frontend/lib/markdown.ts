@@ -1,7 +1,7 @@
 // 计算markdown文件中有意义的字数
 export const countMeaningfulWords = (content: string): number => {
   // 移除markdown语法标记
-  let text = content
+  const text = content
     // 移除代码块
     .replace(/```[\s\S]*?```/g, '')
     // 移除行内代码

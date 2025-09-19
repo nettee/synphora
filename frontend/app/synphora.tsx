@@ -98,7 +98,7 @@ const SynphoraPage = ({
             artifactStatus === ArtifactStatus.COLLAPSED ? "flex-1" : "w-1/3"
           }`}
         >
-          <Chatbot initialMessages={initialMessages} />
+          <Chatbot initialMessages={initialMessages} artifacts={artifacts} />
         </div>
         <div
           data-role="artifact-container"

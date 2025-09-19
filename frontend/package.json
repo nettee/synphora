@@ -22,6 +22,7 @@
     "ai": "^5.0.33",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^17.2.2",
     "embla-carousel-react": "^8.6.0",
     "lucide-react": "^0.542.0",
     "next": "15.5.2",
