@@ -5,10 +5,16 @@ import { useState } from "react";
 import SynphoraPage from "./synphora";
 import WelcomePage from "./welcome";
 import { countMeaningfulWords } from "@/lib/markdown";
+import { testArtifacts } from "@/lib/test-data";
 
 interface FileContent {
   file: File;
   content: string;
+}
+
+enum CurrentPage {
+  WELCOME = "welcome",
+  MAIN = "main",
 }
 
 // 生成唯一ID
@@ -30,20 +36,30 @@ const convertFilesToArtifacts = (
 };
 
 export default function Home() {
-  const [currentPage, setCurrentPage] = useState<"welcome" | "main">("welcome");
+  const [currentPage, setCurrentPage] = useState<CurrentPage>(
+    CurrentPage.WELCOME
+  );
   const [uploadedArtifacts, setUploadedArtifacts] = useState<ArtifactData[]>(
     []
   );
 
+  // 如果需要跳过欢迎页面，则定义环境变量 NEXT_PUBLIC_SKIP_WELCOME 为 true
+  const skipWelcome = process.env.NEXT_PUBLIC_SKIP_WELCOME === "true";
+  if (skipWelcome) {
+    return <SynphoraPage initialArtifacts={testArtifacts} />;
+  }
+
   const handleFilesUploaded = (fileContents: FileContent[]) => {
     const artifacts = convertFilesToArtifacts(fileContents);
     setUploadedArtifacts(artifacts);
-    setCurrentPage("main");
+    setCurrentPage(CurrentPage.MAIN);
   };
 
-  if (currentPage === "welcome") {
+  if (currentPage === CurrentPage.WELCOME) {
     return <WelcomePage onFilesUploaded={handleFilesUploaded} />;
+  } else if (currentPage === CurrentPage.MAIN) {
+    return <SynphoraPage initialArtifacts={uploadedArtifacts} />;
+  } else {
+    throw new Error("Invalid current page");
   }
-
-  return <SynphoraPage initialArtifacts={uploadedArtifacts} />;
 }
