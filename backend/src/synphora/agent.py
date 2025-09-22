@@ -6,10 +6,7 @@ from enum import Enum
 
 from synphora.sse import SseEvent, RunStartedEvent, RunFinishedEvent, TextMessageEvent
 from synphora.llm import create_llm_client
-
-class ArtifactData(BaseModel):
-    name: str
-    content: str
+from synphora.models import ArtifactData
 
 class AgentRequest(BaseModel):
     message: str
@@ -55,7 +52,7 @@ async def generate_agent_response(request: AgentRequest) -> AsyncGenerator[SseEv
 
     def format_artifact(artifact: ArtifactData) -> str:
         return f"""<file>
-          <name>{artifact.name}</name>
+          <name>{artifact.title}</name>
           <content>{artifact.content}</content>
         </file>"""
 
