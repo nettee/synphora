@@ -7,10 +7,10 @@ from enum import Enum
 from synphora.sse import SseEvent, RunStartedEvent, RunFinishedEvent, TextMessageEvent
 from synphora.llm import create_llm_client
 from synphora.models import ArtifactData
+from synphora.artifact_manager import artifact_manager
 
 class AgentRequest(BaseModel):
     message: str
-    artifacts: list[ArtifactData]
 
 
 class Suggestions(Enum):
@@ -49,6 +49,9 @@ async def generate_agent_response(request: AgentRequest) -> AsyncGenerator[SseEv
     system_prompt = """
     你是一个专业的文章写作助手。
     """
+
+    # 从管理器获取最新 artifacts
+    artifacts = artifact_manager.list_artifacts()
 
     def format_artifact(artifact: ArtifactData) -> str:
         return f"""<file>
@@ -104,21 +107,21 @@ async def generate_agent_response(request: AgentRequest) -> AsyncGenerator[SseEv
 ## 文章内容
 
 用户附加的文件内容：
-{'\n\n'.join(format_artifact(artifact) for artifact in request.artifacts)}
+{'\n\n'.join(format_artifact(artifact) for artifact in artifacts)}
         """
 
     elif request.message == Suggestions.ANALYZE_ARTICLE_POSITION.value:
         user_prompt = f"""请帮助用户分析这篇文章的定位。
 
         用户附加的文件内容：
-        {'\n\n'.join(format_artifact(artifact) for artifact in request.artifacts)}
+        {'\n\n'.join(format_artifact(artifact) for artifact in artifacts)}
         """
 
     elif request.message == Suggestions.WRITE_CANDIDATE_TITLES.value:
         user_prompt = f"""请帮助用户为文章撰写 5 个候选标题，并说明每个标题的优缺点。
 
         用户附加的文件内容：
-        {'\n\n'.join(format_artifact(artifact) for artifact in request.artifacts)}
+        {'\n\n'.join(format_artifact(artifact) for artifact in artifacts)}
         """
 
     else:

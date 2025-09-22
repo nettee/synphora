@@ -1,13 +1,15 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from synphora.agent import AgentRequest, generate_agent_response
 from synphora.sse import SseEvent
 from synphora.agent import get_suggestions
+from synphora.artifact_manager import artifact_manager
+from synphora.models import ArtifactData, ArtifactType
 
 app = FastAPI(title="Synphora Agent Server", version="1.0.0")
 
@@ -28,6 +30,14 @@ class HealthResponse(BaseModel):
 
 class SuggestionResponse(BaseModel):
     suggestions: List[str]
+
+class CreateArtifactRequest(BaseModel):
+    title: str
+    content: str
+    description: Optional[str] = None
+
+class ArtifactListResponse(BaseModel):
+    artifacts: List[ArtifactData]
 
 @app.get("/health", response_model=HealthResponse)
 async def api_health():
@@ -66,3 +76,54 @@ async def api_agent(request: AgentRequest):
             "Content-Type": "text/event-stream"
         }
     )
+
+@app.get("/artifacts", response_model=ArtifactListResponse)
+async def get_artifacts():
+    """Get all artifacts"""
+    artifacts = artifact_manager.list_artifacts()
+    return ArtifactListResponse(artifacts=artifacts)
+
+@app.post("/artifacts", response_model=ArtifactData)
+async def create_artifact(request: CreateArtifactRequest):
+    """Create a new artifact"""
+    artifact = artifact_manager.create_artifact(
+        title=request.title,
+        content=request.content,
+        description=request.description,
+        role="user",
+        artifact_type=ArtifactType.ORIGINAL
+    )
+    return artifact
+
+@app.post("/artifacts/upload", response_model=ArtifactData)
+async def upload_artifact(file: UploadFile = File(...)):
+    """Upload a file as an artifact"""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file provided")
+    
+    content = await file.read()
+    content_str = content.decode('utf-8')
+    
+    artifact = artifact_manager.create_artifact(
+        title=file.filename,
+        content=content_str,
+        role="user",
+        artifact_type=ArtifactType.ORIGINAL
+    )
+    return artifact
+
+@app.get("/artifacts/{artifact_id}", response_model=ArtifactData)
+async def get_artifact(artifact_id: str):
+    """Get a specific artifact by ID"""
+    artifact = artifact_manager.get_artifact(artifact_id)
+    if not artifact:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+    return artifact
+
+@app.delete("/artifacts/{artifact_id}")
+async def delete_artifact(artifact_id: str):
+    """Delete an artifact"""
+    success = artifact_manager.delete_artifact(artifact_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+    return {"message": "Artifact deleted successfully"}

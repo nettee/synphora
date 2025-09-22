@@ -9,7 +9,9 @@
       "Bash(pnpm remove:*)",
       "Bash(pnpm build:*)",
       "Bash(pnpm lint:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(curl:*)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": []
