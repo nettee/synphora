@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import useSWR from "swr";
 
 import { ArtifactDetail, ArtifactList } from "@/components/artifact";
 import { Chatbot } from "@/components/chatbot";
 import { ArtifactData, ChatMessage, MessageRole } from "@/lib/types";
+import { fetchArtifacts } from "@/lib/api";
 
 enum ArtifactStatus {
   COLLAPSED = "collapsed",
@@ -13,10 +15,9 @@ enum ArtifactStatus {
 
 const useArtifacts = (
   initialStatus: ArtifactStatus = ArtifactStatus.COLLAPSED,
-  initialArtifacts: ArtifactData[],
+  artifacts: ArtifactData[],
   initialArtifactId: string
 ) => {
-  const [artifacts, setArtifacts] = useState<ArtifactData[]>(initialArtifacts);
   const [artifactStatus, setArtifactStatus] =
     useState<ArtifactStatus>(initialStatus);
   const [currentArtifactId, setCurrentArtifactId] =
@@ -43,16 +44,12 @@ const useArtifacts = (
 };
 
 const SynphoraPage = ({ 
-  initialArtifacts,
   initialArtifactStatus = ArtifactStatus.EXPANDED
 }: {
-  initialArtifacts: ArtifactData[];
   initialArtifactStatus?: ArtifactStatus;
-}) => {
+} = {}) => {
 
-  if (initialArtifacts.length === 0) {
-    throw new Error("initialArtifacts is empty");
-  }
+  const { data: artifactsData = [], error, isLoading } = useSWR('/artifacts', fetchArtifacts);
 
   const initialMessages: ChatMessage[] = [
     {
@@ -71,9 +68,42 @@ const SynphoraPage = ({
     setCurrentArtifactId,
   } = useArtifacts(
     initialArtifactStatus,
-    initialArtifacts,
-    initialArtifacts[0]?.id,
+    artifactsData,
+    artifactsData[0]?.id || '',
   );
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen text-gray-500">
+        <div className="text-center">
+          <h2 className="text-xl mb-2">Loading...</h2>
+          <p>正在加载文档数据...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen text-red-500">
+        <div className="text-center">
+          <h2 className="text-xl mb-2">加载失败</h2>
+          <p>无法连接到后端服务，请检查后端是否正常运行。</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (artifactsData.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-screen text-gray-500">
+        <div className="text-center">
+          <h2 className="text-xl mb-2">No artifacts available</h2>
+          <p>Please upload some files to get started.</p>
+        </div>
+      </div>
+    );
+  }
 
   const openArtifact = (artifactId: string) => {
     expandArtifact();
@@ -98,7 +128,7 @@ const SynphoraPage = ({
             artifactStatus === ArtifactStatus.COLLAPSED ? "flex-1" : "w-1/3"
           }`}
         >
-          <Chatbot initialMessages={initialMessages} artifacts={artifacts} />
+          <Chatbot initialMessages={initialMessages} />
         </div>
         <div
           data-role="artifact-container"
@@ -111,11 +141,18 @@ const SynphoraPage = ({
               artifacts={artifacts}
               onOpenArtifact={openArtifact}
             />
-          ) : (
+          ) : currentArtifact ? (
             <ArtifactDetail
               artifact={currentArtifact}
               onCloseArtifact={closeArtifact}
             />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              <div className="text-center">
+                <h3 className="text-lg mb-2">No artifact selected</h3>
+                <p>Please select an artifact from the list.</p>
+              </div>
+            </div>
           )}
         </div>
       </div>

@@ -10,20 +10,14 @@ interface UploadedFile {
   content?: string;
 }
 
-interface FileContent {
-  file: File;
-  content: string;
-}
-
 interface WelcomePageProps {
-  onFilesUploaded: (fileContents: FileContent[]) => void;
+  onFilesUploaded: () => void;
 }
 
 export default function WelcomePage({ onFilesUploaded }: WelcomePageProps) {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
 
   // 处理文件上传
   const processFiles = useCallback(async (files: FileList | File[]) => {
@@ -39,7 +33,6 @@ export default function WelcomePage({ onFilesUploaded }: WelcomePageProps) {
     setUploadedFiles(prev => [...prev, ...newUploadedFiles]);
 
     // 实际上传文件到后端
-    const fileContents: FileContent[] = [];
     
     for (let i = 0; i < newUploadedFiles.length; i++) {
       const uploadedFile = newUploadedFiles[i];
@@ -72,19 +65,11 @@ export default function WelcomePage({ onFilesUploaded }: WelcomePageProps) {
           )
         );
 
-        // 创建文件内容对象
-        const fileContent: FileContent = {
-          file: uploadedFile.file,
-          content: artifact.content,
-        };
-
-        fileContents.push(fileContent);
-
         // 更新为完成状态，同时保存内容
         setUploadedFiles(prev => 
           prev.map((f, index) => 
             index === prev.length - newUploadedFiles.length + i
-              ? { ...f, status: 'completed' as const, content: artifact.content }
+              ? { ...f, status: 'completed' as const }
               : f
           )
         );
@@ -103,7 +88,7 @@ export default function WelcomePage({ onFilesUploaded }: WelcomePageProps) {
 
     // 延迟一下再上报成功处理的文件
     setTimeout(() => {
-      onFilesUploaded(fileContents);
+      onFilesUploaded();
     }, 500);
 
   }, [onFilesUploaded]);

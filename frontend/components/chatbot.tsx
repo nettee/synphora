@@ -31,7 +31,7 @@ import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { CopyIcon, RefreshCcwIcon } from "lucide-react";
 import { Fragment, useRef, useState } from "react";
-import { ArtifactData, ChatMessage, ChatStatus, MessageRole } from "@/lib/types";
+import { ChatMessage, ChatStatus, MessageRole } from "@/lib/types";
 import { Message, MessageContent } from "@/components/ai-elements/message";
 import { Actions, Action } from "@/components/ai-elements/actions";
 import { Loader } from "@/components/ai-elements/loader";
@@ -53,10 +53,8 @@ const suggestions = process.env.NEXT_PUBLIC_CHAT_SUGGESTIONS?.split(',').map(sug
 
 export const Chatbot = ({
   initialMessages = [],
-  artifacts = [],
 }: {
   initialMessages: ChatMessage[];
-  artifacts: ArtifactData[];
 }) => {
   const [input, setInput] = useState("");
   const [model, setModel] = useState<string>(models[0].value);
@@ -99,10 +97,6 @@ export const Chatbot = ({
         },
         body: JSON.stringify({
           message: text,
-          artifacts: artifacts.map((artifact) => ({
-            name: artifact.title,
-            content: artifact.content,
-          })),
         }),
         signal: controller.signal,
         async onopen(response) {

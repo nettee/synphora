@@ -30,4 +30,6 @@ export interface ArtifactData {
   title: string;
   description?: string;
   content: string;
+  created_at?: string;
+  updated_at?: string;
 }

@@ -11,9 +11,12 @@
       "Bash(pnpm lint:*)",
       "Bash(python:*)",
       "Bash(curl:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "/private/tmp/synphora_test_storage"
+    ]
   }
 }
