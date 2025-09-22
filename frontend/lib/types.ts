@@ -32,4 +32,5 @@ export interface ArtifactData {
   content: string;
   created_at?: string;
   updated_at?: string;
+  isStreaming?: boolean; // 新增：流式状态标识
 }

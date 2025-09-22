@@ -6,7 +6,10 @@ class EventType(Enum):
     RUN_STARTED = "RUN_STARTED"
     RUN_FINISHED = "RUN_FINISHED"
     TEXT_MESSAGE = "TEXT_MESSAGE"
-    ARTIFACT_CREATED = "ARTIFACT_CREATED"
+    ARTIFACT_LIST_UPDATED = "ARTIFACT_LIST_UPDATED"
+    ARTIFACT_CONTENT_START = "ARTIFACT_CONTENT_START"
+    ARTIFACT_CONTENT_CHUNK = "ARTIFACT_CONTENT_CHUNK"
+    ARTIFACT_CONTENT_COMPLETE = "ARTIFACT_CONTENT_COMPLETE"
 
 class SseEvent(BaseModel):
     type: EventType
@@ -46,23 +49,74 @@ class TextMessageEvent(SseEvent):
     def new(cls, message_id: str, content: str) -> "TextMessageEvent":
         return cls(data=TextMessageData(message_id=message_id, content=content))
 
-class ArtifactCreatedData(BaseModel):
+class ArtifactListUpdatedData(BaseModel):
     artifact_id: str
     title: str
     artifact_type: str
     role: str
 
-class ArtifactCreatedEvent(SseEvent):
-    data: ArtifactCreatedData
+class ArtifactListUpdatedEvent(SseEvent):
+    data: ArtifactListUpdatedData
 
     def __init__(self, **kwargs):
-        super().__init__(type=EventType.ARTIFACT_CREATED, **kwargs)
+        super().__init__(type=EventType.ARTIFACT_LIST_UPDATED, **kwargs)
 
     @classmethod
-    def new(cls, artifact_id: str, title: str, artifact_type: str, role: str) -> "ArtifactCreatedEvent":
-        return cls(data=ArtifactCreatedData(
+    def new(cls, artifact_id: str, title: str, artifact_type: str, role: str) -> "ArtifactListUpdatedEvent":
+        return cls(data=ArtifactListUpdatedData(
             artifact_id=artifact_id,
             title=title,
             artifact_type=artifact_type,
             role=role
+        ))
+
+class ArtifactContentStartData(BaseModel):
+    artifact_id: str
+    title: str
+    artifact_type: str
+
+class ArtifactContentStartEvent(SseEvent):
+    data: ArtifactContentStartData
+
+    def __init__(self, **kwargs):
+        super().__init__(type=EventType.ARTIFACT_CONTENT_START, **kwargs)
+
+    @classmethod
+    def new(cls, artifact_id: str, title: str, artifact_type: str) -> "ArtifactContentStartEvent":
+        return cls(data=ArtifactContentStartData(
+            artifact_id=artifact_id,
+            title=title,
+            artifact_type=artifact_type
+        ))
+
+class ArtifactContentChunkData(BaseModel):
+    artifact_id: str
+    content: str
+
+class ArtifactContentChunkEvent(SseEvent):
+    data: ArtifactContentChunkData
+
+    def __init__(self, **kwargs):
+        super().__init__(type=EventType.ARTIFACT_CONTENT_CHUNK, **kwargs)
+
+    @classmethod
+    def new(cls, artifact_id: str, content: str) -> "ArtifactContentChunkEvent":
+        return cls(data=ArtifactContentChunkData(
+            artifact_id=artifact_id,
+            content=content
+        ))
+
+class ArtifactContentCompleteData(BaseModel):
+    artifact_id: str
+
+class ArtifactContentCompleteEvent(SseEvent):
+    data: ArtifactContentCompleteData
+
+    def __init__(self, **kwargs):
+        super().__init__(type=EventType.ARTIFACT_CONTENT_COMPLETE, **kwargs)
+
+    @classmethod
+    def new(cls, artifact_id: str) -> "ArtifactContentCompleteEvent":
+        return cls(data=ArtifactContentCompleteData(
+            artifact_id=artifact_id
         ))

@@ -5,7 +5,7 @@ import useSWR from "swr";
 
 import { ArtifactDetail, ArtifactList } from "@/components/artifact";
 import { Chatbot } from "@/components/chatbot";
-import { ArtifactData, ChatMessage, MessageRole } from "@/lib/types";
+import { ArtifactData, ChatMessage, MessageRole, ArtifactType } from "@/lib/types";
 import { fetchArtifacts } from "@/lib/api";
 
 enum ArtifactStatus {
@@ -70,6 +70,14 @@ const SynphoraPage = ({
     mutate,
   } = useSWR("/artifacts", fetchArtifacts);
 
+  // 使用本地状态管理 artifacts，包含流式数据
+  const [localArtifacts, setLocalArtifacts] = useState<ArtifactData[]>([]);
+
+  // 合并服务器数据和本地流式数据
+  const allArtifacts = [...artifactsData, ...localArtifacts.filter(local => 
+    !artifactsData.some(server => server.id === local.id)
+  )];
+
   const {
     artifacts,
     artifactStatus,
@@ -79,8 +87,8 @@ const SynphoraPage = ({
     setCurrentArtifactId,
   } = useArtifacts(
     initialArtifactStatus,
-    artifactsData,
-    artifactsData[0]?.id || ""
+    allArtifacts,
+    allArtifacts[0]?.id || ""
   );
 
   if (isLoading) {
@@ -125,6 +133,39 @@ const SynphoraPage = ({
     collapseArtifact();
   };
 
+  // 处理流式 Artifact 事件 - 统一数据源方案
+  const handleStreamingArtifactStart = (artifactId: string, title: string, description?: string) => {
+    const newArtifact: ArtifactData = {
+      id: artifactId,
+      title,
+      description,
+      content: "",
+      isStreaming: true,
+      role: MessageRole.ASSISTANT,
+      type: ArtifactType.COMMENT,
+    };
+    
+    setLocalArtifacts(prev => [...prev, newArtifact]);
+    setCurrentArtifactId(artifactId);
+    expandArtifact(); // 自动展开 artifact 面板
+  };
+
+  const handleStreamingArtifactChunk = (artifactId: string, chunk: string) => {
+    setLocalArtifacts(prev => prev.map(artifact => 
+      artifact.id === artifactId 
+        ? { ...artifact, content: artifact.content + chunk }
+        : artifact
+    ));
+  };
+
+  const handleStreamingArtifactComplete = (artifactId: string) => {
+    setLocalArtifacts(prev => prev.map(artifact => 
+      artifact.id === artifactId 
+        ? { ...artifact, isStreaming: false }
+        : artifact
+    ));
+  };
+
   return (
     <div className="w-full h-screen mx-auto p-6">
       <div className="w-full h-full flex gap-4">
@@ -142,6 +183,9 @@ const SynphoraPage = ({
           <Chatbot
             initialMessages={initialMessages}
             onArtifactCreated={() => mutate()}
+            onStreamingArtifactStart={handleStreamingArtifactStart}
+            onStreamingArtifactChunk={handleStreamingArtifactChunk}
+            onStreamingArtifactComplete={handleStreamingArtifactComplete}
           />
         </div>
         <div

@@ -54,9 +54,15 @@ const suggestions = process.env.NEXT_PUBLIC_CHAT_SUGGESTIONS?.split(',').map(sug
 export const Chatbot = ({
   initialMessages = [],
   onArtifactCreated,
+  onStreamingArtifactStart,
+  onStreamingArtifactChunk,
+  onStreamingArtifactComplete,
 }: {
   initialMessages: ChatMessage[];
   onArtifactCreated?: () => void;
+  onStreamingArtifactStart?: (artifactId: string, title: string, description?: string) => void;
+  onStreamingArtifactChunk?: (artifactId: string, chunk: string) => void;
+  onStreamingArtifactComplete?: (artifactId: string) => void;
 }) => {
   const [input, setInput] = useState("");
   const [model, setModel] = useState<string>(models[0].value);
@@ -168,8 +174,32 @@ export const Chatbot = ({
                   setStatus("ready");
                   break;
 
-                case "ARTIFACT_CREATED":
-                  console.log("Artifact created:", eventData.data);
+                case "ARTIFACT_CONTENT_START":
+                  const { artifact_id: startArtifactId, title, description } = eventData.data;
+                  console.log("Artifact content start:", eventData.data);
+                  if (onStreamingArtifactStart) {
+                    onStreamingArtifactStart(startArtifactId, title, description);
+                  }
+                  break;
+
+                case "ARTIFACT_CONTENT_CHUNK":
+                  const { artifact_id: chunkArtifactId, content: chunkContent } = eventData.data;
+                  console.log("Artifact content chunk:", eventData.data);
+                  if (onStreamingArtifactChunk) {
+                    onStreamingArtifactChunk(chunkArtifactId, chunkContent);
+                  }
+                  break;
+
+                case "ARTIFACT_CONTENT_COMPLETE":
+                  const { artifact_id: completeArtifactId } = eventData.data;
+                  console.log("Artifact content complete:", eventData.data);
+                  if (onStreamingArtifactComplete) {
+                    onStreamingArtifactComplete(completeArtifactId);
+                  }
+                  break;
+
+                case "ARTIFACT_LIST_UPDATED":
+                  console.log("Artifact list updated:", eventData.data);
                   if (onArtifactCreated) {
                     onArtifactCreated();
                   }

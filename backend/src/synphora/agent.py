@@ -4,7 +4,11 @@ import uuid
 from langchain_core.messages import SystemMessage, HumanMessage
 from enum import Enum
 
-from synphora.sse import SseEvent, RunStartedEvent, RunFinishedEvent, TextMessageEvent, ArtifactCreatedEvent
+from synphora.sse import (
+    SseEvent, RunStartedEvent, RunFinishedEvent, TextMessageEvent, 
+    ArtifactListUpdatedEvent, ArtifactContentStartEvent, 
+    ArtifactContentChunkEvent, ArtifactContentCompleteEvent
+)
 from synphora.llm import create_llm_client
 from synphora.models import ArtifactData, ArtifactType, ArtifactRole
 from synphora.artifact_manager import artifact_manager
@@ -58,8 +62,14 @@ async def generate_agent_response(request: AgentRequest) -> AsyncGenerator[SseEv
           <content>{artifact.content}</content>
         </file>"""
 
+    # Determine artifact title and confirmation message based on request type
+    artifact_title = "文章评价"
+    confirmation_message = "我将为你生成文章评价"
+    
     if request.message == Suggestions.EVALUATE_ARTICLE.value:
         system_prompt = """你是一位顶尖的内容分析师和资深编辑。"""
+        artifact_title = "文章评价"
+        confirmation_message = "我将为你生成文章评价"
 
         user_prompt = f"""请帮我评价这篇文章。
 
@@ -81,11 +91,11 @@ async def generate_agent_response(request: AgentRequest) -> AsyncGenerator[SseEv
 
 2. 内容深度与原创性： 
 
-评判： 文章提供的是独特的见解还是陈旧的观点？其内容的深度能否满足目标读者的求知欲，给他们带来“原来如此”的感觉？ 
+评判： 文章提供的是独特的见解还是陈旧的观点？其内容的深度能否满足目标读者的求知欲，给他们带来"原来如此"的感觉？ 
 
 3. 目标读者匹配度： 
 
-评判： 文章整体（从语气到内容）与目标读者的“频道”是否一致？是否存在某些部分可能会让目标读者感到脱节或失去兴趣？ 
+评判： 文章整体（从语气到内容）与目标读者的"频道"是否一致？是否存在某些部分可能会让目标读者感到脱节或失去兴趣？ 
 
 4. 情感共鸣： 
 
@@ -110,6 +120,8 @@ async def generate_agent_response(request: AgentRequest) -> AsyncGenerator[SseEv
         """
 
     elif request.message == Suggestions.ANALYZE_ARTICLE_POSITION.value:
+        artifact_title = "文章定位分析"
+        confirmation_message = "我将为你分析文章定位"
         user_prompt = f"""请帮助用户分析这篇文章的定位。
 
         用户附加的文件内容：
@@ -117,6 +129,8 @@ async def generate_agent_response(request: AgentRequest) -> AsyncGenerator[SseEv
         """
 
     elif request.message == Suggestions.WRITE_CANDIDATE_TITLES.value:
+        artifact_title = "候选标题"
+        confirmation_message = "我将为你撰写候选标题"
         user_prompt = f"""请帮助用户为文章撰写 5 个候选标题，并说明每个标题的优缺点。
 
         用户附加的文件内容：
@@ -126,33 +140,49 @@ async def generate_agent_response(request: AgentRequest) -> AsyncGenerator[SseEv
     else:
         user_prompt = request.message
 
+    # Step 1: Send confirmation message to chat
+    confirmation_message_id = generate_id()
+    yield TextMessageEvent.new(message_id=confirmation_message_id, content=confirmation_message)
+
+    # Step 2: Start artifact content streaming
+    artifact_id = generate_id()
+    yield ArtifactContentStartEvent.new(
+        artifact_id=artifact_id,
+        title=artifact_title,
+        artifact_type=ArtifactType.COMMENT.value
+    )
+
     messages = [
         SystemMessage(content=system_prompt),
         HumanMessage(content=user_prompt),
     ]
 
-    message_id = generate_id()
-
     llm = create_llm_client()
     print(f'llm request, messages: {messages}')
     llm_result_content = ''
+    
+    # Step 3: Stream artifact content in chunks
     for chunk in llm.stream(messages):
         if chunk.content:
-            yield TextMessageEvent.new(message_id=message_id, content=chunk.content)
+            yield ArtifactContentChunkEvent.new(artifact_id=artifact_id, content=chunk.content)
             llm_result_content += chunk.content
 
+    # Step 4: Complete artifact content streaming
+    yield ArtifactContentCompleteEvent.new(artifact_id=artifact_id)
+
+    # Step 5: Create the artifact in storage and notify frontend
     artifact = artifact_manager.create_artifact(
-        title="文章评价",
+        title=artifact_title,
         content=llm_result_content,
         artifact_type=ArtifactType.COMMENT,
         role=ArtifactRole.ASSISTANT,
     )
     
-    yield ArtifactCreatedEvent.new(
+    yield ArtifactListUpdatedEvent.new(
         artifact_id=artifact.id,
         title=artifact.title,
         artifact_type=artifact.type.value,
-        role=artifact.role.value
+        role=artifact.role.value,
     )
 
     yield RunFinishedEvent.new()

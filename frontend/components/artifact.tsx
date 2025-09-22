@@ -9,7 +9,7 @@ import {
   ArtifactTitle,
 } from "./ai-elements/artifact";
 import { Streamdown } from "streamdown";
-import { XIcon } from "lucide-react";
+import { XIcon, Loader2 } from "lucide-react";
 
 // Artifact 详情组件
 export const ArtifactDetail = ({
@@ -23,10 +23,17 @@ export const ArtifactDetail = ({
     <Artifact data-role="artifact-detail" className="h-full">
       <ArtifactHeader>
         <div>
-          <ArtifactTitle>{artifact.title}</ArtifactTitle>
-          <ArtifactDescription>
-            {artifact.description}
-          </ArtifactDescription>
+          <ArtifactTitle className="flex items-center gap-2">
+            {artifact.title}
+            {artifact.isStreaming && (
+              <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+            )}
+          </ArtifactTitle>
+          {artifact.description && (
+            <ArtifactDescription>
+              {artifact.description}
+            </ArtifactDescription>
+          )}
         </div>
         <ArtifactActions>
           <ArtifactAction
@@ -42,6 +49,12 @@ export const ArtifactDetail = ({
         <Streamdown className="streamdown">
           {artifact.content}
         </Streamdown>
+        {artifact.isStreaming && (
+          <div className="mt-2 text-sm text-gray-500 flex items-center gap-1">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            正在生成中...
+          </div>
+        )}
       </ArtifactContent>
     </Artifact>
   );
