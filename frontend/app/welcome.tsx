@@ -24,15 +24,6 @@ export default function WelcomePage({ onFilesUploaded }: WelcomePageProps) {
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 读取文件内容
-  const readFileContent = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target?.result as string);
-      reader.onerror = reject;
-      reader.readAsText(file);
-    });
-  };
 
   // 处理文件上传
   const processFiles = useCallback(async (files: FileList | File[]) => {
@@ -47,31 +38,44 @@ export default function WelcomePage({ onFilesUploaded }: WelcomePageProps) {
 
     setUploadedFiles(prev => [...prev, ...newUploadedFiles]);
 
-    // 模拟上传过程并读取文件内容
+    // 实际上传文件到后端
     const fileContents: FileContent[] = [];
     
     for (let i = 0; i < newUploadedFiles.length; i++) {
       const uploadedFile = newUploadedFiles[i];
       try {
-        // 模拟上传进度
-        for (let progress = 0; progress <= 100; progress += 20) {
-          setUploadedFiles(prev => 
-            prev.map((f, index) => 
-              index === prev.length - newUploadedFiles.length + i
-                ? { ...f, progress }
-                : f
-            )
-          );
-          await new Promise(resolve => setTimeout(resolve, 100));
+        console.log(`🚀 Starting upload for file "${uploadedFile.file.name}"`);
+        
+        // 创建 FormData
+        const formData = new FormData();
+        formData.append('file', uploadedFile.file);
+
+        // 上传到后端
+        const response = await fetch('http://127.0.0.1:8000/artifacts/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Upload failed: ${response.statusText}`);
         }
 
-        // 读取文件内容
-        const content = await readFileContent(uploadedFile.file);
+        const artifact = await response.json();
+        console.log(`✅ File "${uploadedFile.file.name}" uploaded successfully, artifact ID: ${artifact.id}`);
         
+        // 更新进度到100%
+        setUploadedFiles(prev => 
+          prev.map((f, index) => 
+            index === prev.length - newUploadedFiles.length + i
+              ? { ...f, progress: 100 }
+              : f
+          )
+        );
+
         // 创建文件内容对象
         const fileContent: FileContent = {
           file: uploadedFile.file,
-          content: content,
+          content: artifact.content,
         };
 
         fileContents.push(fileContent);
@@ -80,11 +84,12 @@ export default function WelcomePage({ onFilesUploaded }: WelcomePageProps) {
         setUploadedFiles(prev => 
           prev.map((f, index) => 
             index === prev.length - newUploadedFiles.length + i
-              ? { ...f, status: 'completed' as const, content }
+              ? { ...f, status: 'completed' as const, content: artifact.content }
               : f
           )
         );
       } catch (error) {
+        console.error('Upload error:', error);
         // 更新为错误状态
         setUploadedFiles(prev => 
           prev.map((f, index) => 
