@@ -4,9 +4,9 @@ import uuid
 from langchain_core.messages import SystemMessage, HumanMessage
 from enum import Enum
 
-from synphora.sse import SseEvent, RunStartedEvent, RunFinishedEvent, TextMessageEvent
+from synphora.sse import SseEvent, RunStartedEvent, RunFinishedEvent, TextMessageEvent, ArtifactCreatedEvent
 from synphora.llm import create_llm_client
-from synphora.models import ArtifactData
+from synphora.models import ArtifactData, ArtifactType, ArtifactRole
 from synphora.artifact_manager import artifact_manager
 
 class AgentRequest(BaseModel):
@@ -50,8 +50,7 @@ async def generate_agent_response(request: AgentRequest) -> AsyncGenerator[SseEv
     你是一个专业的文章写作助手。
     """
 
-    # 从管理器获取最新 artifacts
-    artifacts = artifact_manager.list_artifacts()
+    original_artifact = artifact_manager.get_original_artifact()
 
     def format_artifact(artifact: ArtifactData) -> str:
         return f"""<file>
@@ -107,31 +106,53 @@ async def generate_agent_response(request: AgentRequest) -> AsyncGenerator[SseEv
 ## 文章内容
 
 用户附加的文件内容：
-{'\n\n'.join(format_artifact(artifact) for artifact in artifacts)}
+{format_artifact(original_artifact)}
         """
 
     elif request.message == Suggestions.ANALYZE_ARTICLE_POSITION.value:
         user_prompt = f"""请帮助用户分析这篇文章的定位。
 
         用户附加的文件内容：
-        {'\n\n'.join(format_artifact(artifact) for artifact in artifacts)}
+        {format_artifact(original_artifact)}
         """
 
     elif request.message == Suggestions.WRITE_CANDIDATE_TITLES.value:
         user_prompt = f"""请帮助用户为文章撰写 5 个候选标题，并说明每个标题的优缺点。
 
         用户附加的文件内容：
-        {'\n\n'.join(format_artifact(artifact) for artifact in artifacts)}
+        {format_artifact(original_artifact)}
         """
 
     else:
         user_prompt = request.message
 
-    llm_messages = [
+    messages = [
         SystemMessage(content=system_prompt),
         HumanMessage(content=user_prompt),
     ]
-    async for event in generate_llm_message(llm_messages):
-        yield event
+
+    message_id = generate_id()
+
+    llm = create_llm_client()
+    print(f'llm request, messages: {messages}')
+    llm_result_content = ''
+    for chunk in llm.stream(messages):
+        if chunk.content:
+            yield TextMessageEvent.new(message_id=message_id, content=chunk.content)
+            llm_result_content += chunk.content
+
+    artifact = artifact_manager.create_artifact(
+        title="文章评价",
+        content=llm_result_content,
+        artifact_type=ArtifactType.COMMENT,
+        role=ArtifactRole.ASSISTANT,
+    )
+    
+    yield ArtifactCreatedEvent.new(
+        artifact_id=artifact.id,
+        title=artifact.title,
+        artifact_type=artifact.type.value,
+        role=artifact.role.value
+    )
 
     yield RunFinishedEvent.new()

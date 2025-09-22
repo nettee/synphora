@@ -23,7 +23,9 @@ const useArtifacts = (
   const [currentArtifactId, setCurrentArtifactId] =
     useState<string>(initialArtifactId);
 
-  const currentArtifact = artifacts.find((artifact) => artifact.id === currentArtifactId) || artifacts[0];
+  const currentArtifact =
+    artifacts.find((artifact) => artifact.id === currentArtifactId) ||
+    artifacts[0];
 
   const collapseArtifact = () => {
     setArtifactStatus(ArtifactStatus.COLLAPSED);
@@ -43,21 +45,30 @@ const useArtifacts = (
   };
 };
 
-const SynphoraPage = ({ 
-  initialArtifactStatus = ArtifactStatus.EXPANDED
+const initialMessages: ChatMessage[] = [
+  {
+    id: "2",
+    role: MessageRole.ASSISTANT,
+    parts: [
+      {
+        type: "text",
+        text: "你好，我是 Synphora，你的写作助手。请提出你对于文章分析和润色的需求。",
+      },
+    ],
+  },
+];
+
+const SynphoraPage = ({
+  initialArtifactStatus = ArtifactStatus.EXPANDED,
 }: {
   initialArtifactStatus?: ArtifactStatus;
 } = {}) => {
-
-  const { data: artifactsData = [], error, isLoading } = useSWR('/artifacts', fetchArtifacts);
-
-  const initialMessages: ChatMessage[] = [
-    {
-      id: '2',
-      role: MessageRole.ASSISTANT,
-      parts: [{ type: 'text', text: '你好，我是 Synphora，你的写作助手。请提出你对于文章分析和润色的需求。' }],
-    },
-  ];
+  const {
+    data: artifactsData = [],
+    error,
+    isLoading,
+    mutate,
+  } = useSWR("/artifacts", fetchArtifacts);
 
   const {
     artifacts,
@@ -69,7 +80,7 @@ const SynphoraPage = ({
   } = useArtifacts(
     initialArtifactStatus,
     artifactsData,
-    artifactsData[0]?.id || '',
+    artifactsData[0]?.id || ""
   );
 
   if (isLoading) {
@@ -128,7 +139,10 @@ const SynphoraPage = ({
             artifactStatus === ArtifactStatus.COLLAPSED ? "flex-1" : "w-1/3"
           }`}
         >
-          <Chatbot initialMessages={initialMessages} />
+          <Chatbot
+            initialMessages={initialMessages}
+            onArtifactCreated={() => mutate()}
+          />
         </div>
         <div
           data-role="artifact-container"
@@ -137,10 +151,7 @@ const SynphoraPage = ({
           }`}
         >
           {artifactStatus === ArtifactStatus.COLLAPSED ? (
-            <ArtifactList
-              artifacts={artifacts}
-              onOpenArtifact={openArtifact}
-            />
+            <ArtifactList artifacts={artifacts} onOpenArtifact={openArtifact} />
           ) : currentArtifact ? (
             <ArtifactDetail
               artifact={currentArtifact}

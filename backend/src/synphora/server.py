@@ -9,7 +9,7 @@ from synphora.agent import AgentRequest, generate_agent_response
 from synphora.sse import SseEvent
 from synphora.agent import get_suggestions
 from synphora.artifact_manager import artifact_manager
-from synphora.models import ArtifactData, ArtifactType
+from synphora.models import ArtifactData, ArtifactType, ArtifactRole
 
 app = FastAPI(title="Synphora Agent Server", version="1.0.0")
 
@@ -93,7 +93,7 @@ async def create_artifact(request: CreateArtifactRequest):
         title=request.title,
         content=request.content,
         description=request.description,
-        role="user",
+        role=ArtifactRole.USER,
         artifact_type=ArtifactType.ORIGINAL
     )
     print(f"✅ create_artifact completed, artifact ID: {artifact.id}")
@@ -112,7 +112,7 @@ async def upload_artifact(file: UploadFile = File(...)):
     artifact = artifact_manager.create_artifact(
         title=file.filename,
         content=content_str,
-        role="user",
+        role=ArtifactRole.USER,
         artifact_type=ArtifactType.ORIGINAL
     )
     print(f"✅ upload_artifact completed, file '{file.filename}' saved as artifact ID: {artifact.id}")

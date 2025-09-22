@@ -6,6 +6,7 @@ class EventType(Enum):
     RUN_STARTED = "RUN_STARTED"
     RUN_FINISHED = "RUN_FINISHED"
     TEXT_MESSAGE = "TEXT_MESSAGE"
+    ARTIFACT_CREATED = "ARTIFACT_CREATED"
 
 class SseEvent(BaseModel):
     type: EventType
@@ -44,3 +45,24 @@ class TextMessageEvent(SseEvent):
     @classmethod
     def new(cls, message_id: str, content: str) -> "TextMessageEvent":
         return cls(data=TextMessageData(message_id=message_id, content=content))
+
+class ArtifactCreatedData(BaseModel):
+    artifact_id: str
+    title: str
+    artifact_type: str
+    role: str
+
+class ArtifactCreatedEvent(SseEvent):
+    data: ArtifactCreatedData
+
+    def __init__(self, **kwargs):
+        super().__init__(type=EventType.ARTIFACT_CREATED, **kwargs)
+
+    @classmethod
+    def new(cls, artifact_id: str, title: str, artifact_type: str, role: str) -> "ArtifactCreatedEvent":
+        return cls(data=ArtifactCreatedData(
+            artifact_id=artifact_id,
+            title=title,
+            artifact_type=artifact_type,
+            role=role
+        ))

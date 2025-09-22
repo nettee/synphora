@@ -53,8 +53,10 @@ const suggestions = process.env.NEXT_PUBLIC_CHAT_SUGGESTIONS?.split(',').map(sug
 
 export const Chatbot = ({
   initialMessages = [],
+  onArtifactCreated,
 }: {
   initialMessages: ChatMessage[];
+  onArtifactCreated?: () => void;
 }) => {
   const [input, setInput] = useState("");
   const [model, setModel] = useState<string>(models[0].value);
@@ -164,6 +166,13 @@ export const Chatbot = ({
 
                 case "RUN_FINISHED":
                   setStatus("ready");
+                  break;
+
+                case "ARTIFACT_CREATED":
+                  console.log("Artifact created:", eventData.data);
+                  if (onArtifactCreated) {
+                    onArtifactCreated();
+                  }
                   break;
               }
             }

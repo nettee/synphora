@@ -1,18 +1,34 @@
 import json
+import shutil
+import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional
 from datetime import datetime
 import uuid
 
-from synphora.models import ArtifactData, ArtifactType
+from synphora.models import ArtifactData, ArtifactType, ArtifactRole
 
 
 class FileStorage:
     def __init__(self, storage_path: str = "tests/data/store"):
-        self.storage_path = Path(storage_path)
+        self.original_storage_path = Path(storage_path)
+        # 创建临时目录副本
+        self.storage_path = self._create_temp_copy()
         self.metadata_file = self.storage_path / "metadata.json"
         self._ensure_storage_directory()
         self._metadata: Dict[str, dict] = self._load_metadata()
+    
+    def _create_temp_copy(self) -> Path:
+        """创建原始存储目录的临时副本"""
+        # 在 /tmp 下创建唯一的临时目录
+        temp_dir = Path(tempfile.mkdtemp(prefix="synphora_storage_"))
+        
+        # 如果原始目录存在，复制其内容
+        if self.original_storage_path.exists():
+            shutil.copytree(self.original_storage_path, temp_dir, dirs_exist_ok=True)
+        
+        print(f"📁 Created temporary storage copy at: {temp_dir}")
+        return temp_dir
     
     def _ensure_storage_directory(self):
         """确保存储目录存在"""
@@ -42,7 +58,7 @@ class FileStorage:
         title: str, 
         content: str, 
         artifact_type: ArtifactType = ArtifactType.ORIGINAL,
-        role: str = "user",
+        role: ArtifactRole = ArtifactRole.USER,
         description: Optional[str] = None
     ) -> ArtifactData:
         """创建新的 artifact"""
@@ -157,3 +173,9 @@ class FileStorage:
         # 清空元数据
         self._metadata.clear()
         self._save_metadata()
+    
+    def cleanup_temp_storage(self):
+        """清理临时存储目录（可选）"""
+        if self.storage_path.exists() and str(self.storage_path).startswith("/tmp"):
+            shutil.rmtree(self.storage_path)
+            print(f"🗑️ Cleaned up temporary storage: {self.storage_path}")

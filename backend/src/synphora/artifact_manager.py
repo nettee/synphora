@@ -1,7 +1,7 @@
 import os
 from typing import List, Optional
 
-from synphora.models import ArtifactData, ArtifactType
+from synphora.models import ArtifactData, ArtifactType, ArtifactRole
 from synphora.file_storage import FileStorage
 
 
@@ -16,7 +16,7 @@ class ArtifactManager:
         title: str, 
         content: str, 
         artifact_type: ArtifactType = ArtifactType.ORIGINAL,
-        role: str = "user",
+        role: ArtifactRole = ArtifactRole.USER,
         description: Optional[str] = None
     ) -> ArtifactData:
         """创建新的 artifact"""
@@ -35,6 +35,13 @@ class ArtifactManager:
     def list_artifacts(self) -> List[ArtifactData]:
         """获取所有 artifacts"""
         return self._storage.list_artifacts()
+
+    def get_original_artifact(self) -> ArtifactData:
+        artifacts = self.list_artifacts()
+        for artifact in artifacts:
+            if artifact.type == ArtifactType.ORIGINAL:
+                return artifact
+        raise ValueError("No original artifact found")
     
     def update_artifact(
         self, 

@@ -8,9 +8,14 @@ class ArtifactType(str, Enum):
     COMMENT = "comment"
 
 
+class ArtifactRole(str, Enum):
+    USER = "user"
+    ASSISTANT = "assistant"
+
+
 class ArtifactData(BaseModel):
     id: str
-    role: str  # "user" | "assistant" 
+    role: ArtifactRole
     type: ArtifactType
     title: str
     description: Optional[str] = None
