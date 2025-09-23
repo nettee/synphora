@@ -10,7 +10,7 @@ from synphora.sse import (
 )
 from synphora.llm import create_llm_client
 from synphora.artifact_manager import artifact_manager
-from synphora.models import ArtifactType, ArtifactRole
+from synphora.models import ArtifactType, ArtifactRole, ArtifactData
 
 
 class AsyncStreamingTool(ABC):
@@ -65,7 +65,7 @@ class ArticleEvaluationTool(AsyncStreamingTool):
     def generate_id(self) -> str:
         return str(uuid.uuid4())[:8]
     
-    async def execute(self, article_content: str) -> AsyncGenerator[SseEvent, None]:
+    async def execute(self) -> AsyncGenerator[SseEvent, None]:
         """执行文章评价并生成SSE事件流"""
         
         # 1. 发送ARTIFACT_CONTENT_START事件
@@ -79,6 +79,16 @@ class ArticleEvaluationTool(AsyncStreamingTool):
         )
         
         # 2. 准备评价prompt
+        original_artifact = artifact_manager.get_original_artifact()
+
+        def format_artifact(artifact: ArtifactData) -> str:
+            return f"""<file>
+<name>{artifact.title}</name>
+<content>{artifact.content}</content>
+</file>"""
+        
+        article_content = format_artifact(original_artifact)
+
         system_prompt = """你是一位顶尖的内容分析师和资深编辑。"""
         
         user_prompt = f"""请帮我评价这篇文章。
