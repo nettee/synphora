@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from synphora.agent import AgentRequest, generate_agent_response
-from synphora.sse import SseEvent
+from synphora.sse import SseEvent, EventType    
 from synphora.agent import get_suggestions
 from synphora.artifact_manager import artifact_manager
 from synphora.models import ArtifactData, ArtifactType, ArtifactRole
@@ -65,6 +65,8 @@ async def api_agent(request: AgentRequest):
 
     async def generate_sse():
         async for event in generate_agent_response(request):
+            if event.type not in (EventType.TEXT_MESSAGE, EventType.ARTIFACT_CONTENT_CHUNK):
+                print(f'send sse event: {event}')
             yield format_sse_event(event)
 
     return StreamingResponse(

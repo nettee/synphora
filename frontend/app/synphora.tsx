@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import useSWR from "swr";
 
 import { ArtifactDetail, ArtifactList } from "@/components/artifact";
@@ -70,13 +70,6 @@ const SynphoraPage = ({
     mutate,
   } = useSWR("/artifacts", fetchArtifacts);
 
-  // 使用本地状态管理 artifacts，包含流式数据
-  const [localArtifacts, setLocalArtifacts] = useState<ArtifactData[]>([]);
-
-  // 合并服务器数据和本地流式数据
-  const allArtifacts = [...artifactsData, ...localArtifacts.filter(local => 
-    !artifactsData.some(server => server.id === local.id)
-  )];
 
   const {
     artifacts,
@@ -87,8 +80,8 @@ const SynphoraPage = ({
     setCurrentArtifactId,
   } = useArtifacts(
     initialArtifactStatus,
-    allArtifacts,
-    allArtifacts[0]?.id || ""
+    artifactsData,
+    artifactsData[0]?.id || ""
   );
 
   if (isLoading) {
@@ -133,8 +126,8 @@ const SynphoraPage = ({
     collapseArtifact();
   };
 
-  // 处理流式 Artifact 事件 - 统一数据源方案
-  const handleStreamingArtifactStart = (artifactId: string, title: string, description?: string) => {
+  // 处理流式 Artifact 事件 - 使用 SWR 缓存作为单一数据源
+  const onArtifactContentStart = (artifactId: string, title: string, description?: string) => {
     const newArtifact: ArtifactData = {
       id: artifactId,
       title,
@@ -144,26 +137,31 @@ const SynphoraPage = ({
       role: MessageRole.ASSISTANT,
       type: ArtifactType.COMMENT,
     };
-    
-    setLocalArtifacts(prev => [...prev, newArtifact]);
+
+    // 直接写入 SWR 缓存，避免本地副本
+    mutate((prev: ArtifactData[] = []) => {
+      if (prev.some(a => a.id === artifactId)) return prev;
+      return [...prev, newArtifact];
+    }, false);
     setCurrentArtifactId(artifactId);
     expandArtifact(); // 自动展开 artifact 面板
   };
 
-  const handleStreamingArtifactChunk = (artifactId: string, chunk: string) => {
-    setLocalArtifacts(prev => prev.map(artifact => 
-      artifact.id === artifactId 
-        ? { ...artifact, content: artifact.content + chunk }
-        : artifact
-    ));
+  const onArtifactContentChunk = (artifactId: string, chunk: string) => {
+    mutate((prev: ArtifactData[] = []) =>
+      prev.map(a => a.id === artifactId ? { ...a, content: (a.content || "") + chunk } : a)
+    , false);
   };
 
-  const handleStreamingArtifactComplete = (artifactId: string) => {
-    setLocalArtifacts(prev => prev.map(artifact => 
-      artifact.id === artifactId 
-        ? { ...artifact, isStreaming: false }
-        : artifact
-    ));
+  const onArtifactContentComplete = (artifactId: string) => {
+    mutate((prev: ArtifactData[] = []) =>
+      prev.map(a => a.id === artifactId ? { ...a, isStreaming: false } : a)
+    , false);
+  };
+
+  const onArtifactListUpdated = () => {
+    // 以服务端为准，刷新缓存
+    mutate();
   };
 
   return (
@@ -182,10 +180,10 @@ const SynphoraPage = ({
         >
           <Chatbot
             initialMessages={initialMessages}
-            onArtifactCreated={() => mutate()}
-            onStreamingArtifactStart={handleStreamingArtifactStart}
-            onStreamingArtifactChunk={handleStreamingArtifactChunk}
-            onStreamingArtifactComplete={handleStreamingArtifactComplete}
+            onArtifactContentStart={onArtifactContentStart}
+            onArtifactContentChunk={onArtifactContentChunk}
+            onArtifactContentComplete={onArtifactContentComplete}
+            onArtifactListUpdated={onArtifactListUpdated}
           />
         </div>
         <div

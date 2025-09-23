@@ -53,16 +53,16 @@ const suggestions = process.env.NEXT_PUBLIC_CHAT_SUGGESTIONS?.split(',').map(sug
 
 export const Chatbot = ({
   initialMessages = [],
-  onArtifactCreated,
-  onStreamingArtifactStart,
-  onStreamingArtifactChunk,
-  onStreamingArtifactComplete,
+  onArtifactContentStart,
+  onArtifactContentChunk,
+  onArtifactContentComplete,
+  onArtifactListUpdated,
 }: {
   initialMessages: ChatMessage[];
-  onArtifactCreated?: () => void;
-  onStreamingArtifactStart?: (artifactId: string, title: string, description?: string) => void;
-  onStreamingArtifactChunk?: (artifactId: string, chunk: string) => void;
-  onStreamingArtifactComplete?: (artifactId: string) => void;
+  onArtifactContentStart: (artifactId: string, title: string, description?: string) => void;
+  onArtifactContentChunk: (artifactId: string, chunk: string) => void;
+  onArtifactContentComplete: (artifactId: string) => void;
+  onArtifactListUpdated: () => void;
 }) => {
   const [input, setInput] = useState("");
   const [model, setModel] = useState<string>(models[0].value);
@@ -177,32 +177,24 @@ export const Chatbot = ({
                 case "ARTIFACT_CONTENT_START":
                   const { artifact_id: startArtifactId, title, description } = eventData.data;
                   console.log("Artifact content start:", eventData.data);
-                  if (onStreamingArtifactStart) {
-                    onStreamingArtifactStart(startArtifactId, title, description);
-                  }
+                  onArtifactContentStart(startArtifactId, title, description);
                   break;
 
                 case "ARTIFACT_CONTENT_CHUNK":
                   const { artifact_id: chunkArtifactId, content: chunkContent } = eventData.data;
-                  console.log("Artifact content chunk:", eventData.data);
-                  if (onStreamingArtifactChunk) {
-                    onStreamingArtifactChunk(chunkArtifactId, chunkContent);
-                  }
+                  // console.log("Artifact content chunk:", eventData.data);
+                  onArtifactContentChunk(chunkArtifactId, chunkContent);
                   break;
 
                 case "ARTIFACT_CONTENT_COMPLETE":
                   const { artifact_id: completeArtifactId } = eventData.data;
                   console.log("Artifact content complete:", eventData.data);
-                  if (onStreamingArtifactComplete) {
-                    onStreamingArtifactComplete(completeArtifactId);
-                  }
+                  onArtifactContentComplete(completeArtifactId);
                   break;
 
                 case "ARTIFACT_LIST_UPDATED":
                   console.log("Artifact list updated:", eventData.data);
-                  if (onArtifactCreated) {
-                    onArtifactCreated();
-                  }
+                  onArtifactListUpdated();
                   break;
               }
             }
