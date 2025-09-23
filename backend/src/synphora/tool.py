@@ -28,21 +28,31 @@ class ArticleEvaluator:
     
     @staticmethod
     @tool
-    def evaluate_article() -> str:
-        """评价这篇文章的质量，包括读者画像分析和六大维度评估"""
+    def evaluate_article(original_artifact_id: str) -> str:
+        """
+        评价这篇文章的质量，包括读者画像分析和六大维度评估
+
+        Args:
+            original_artifact_id: 原文 Artifact ID
+
+        Returns:
+            str: 评价结果的元数据
+        """
+
+        print(f'evaluate_article, original_artifact_id: {original_artifact_id}')
         
         # 1. 发送ARTIFACT_CONTENT_START事件
-        artifact_id = generate_id()
+        generated_artifact_id = generate_id()
         artifact_title = "文章评价"
         
         write_sse_event(ArtifactContentStartEvent.new(
-                artifact_id=artifact_id,
+                artifact_id=generated_artifact_id,
                 title=artifact_title,
                 artifact_type=ArtifactType.COMMENT.value
         ))
         
         # 2. 准备评价prompt
-        original_artifact = artifact_manager.get_original_artifact()
+        original_artifact = artifact_manager.get_artifact(original_artifact_id)
 
         def format_artifact(artifact: ArtifactData) -> str:
             return f"""<file>
@@ -116,13 +126,13 @@ class ArticleEvaluator:
         for chunk in llm.stream(messages):
             if chunk.content:
                 write_sse_event(ArtifactContentChunkEvent.new(
-                    artifact_id=artifact_id, 
+                    artifact_id=generated_artifact_id, 
                     content=chunk.content
                 ))
                 llm_result_content += chunk.content
         
         # 5. 发送ARTIFACT_CONTENT_COMPLETE事件
-        write_sse_event(ArtifactContentCompleteEvent.new(artifact_id=artifact_id))
+        write_sse_event(ArtifactContentCompleteEvent.new(artifact_id=generated_artifact_id))
         
         # 6. 创建artifact并发送ARTIFACT_LIST_UPDATED事件
         artifact = artifact_manager.create_artifact(
@@ -139,5 +149,5 @@ class ArticleEvaluator:
             role=artifact.role.value,
         ))
         
-        return f"【工具完成】文章评价（artifact_id: {artifact_id}）"
+        return f"【工具完成】文章评价（artifact_id: {generated_artifact_id}）"
 

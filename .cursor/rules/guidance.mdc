@@ -1,0 +1,21 @@
+---
+description: This file provides guidance when working with code in this repository.
+globs:
+alwaysApply: true
+---
+
+## Commands
+
+### Frontend Development (in `/frontend` directory)
+
+Package Manager: `pnpm`
+
+- `pnpm dev` - Start development server with Turbopack
+
+### Backend Development (in `/backend` directory)
+
+Package Manager: `uv`
+
+- `uv run dev` - Start backend server with auto-reload
+- `curl -X GET "http://127.0.0.1:8000/health"` - Health check endpoint
+- `curl -X POST "http://127.0.0.1:8000/agent" -H "Content-Type: application/json" -d '{"message": "Hello"}'` - Send chat request

@@ -5,21 +5,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ### Frontend Development (in `/frontend` directory)
+
+Package Manager: `pnpm`
+
 - `pnpm dev` - Start development server with Turbopack
-- `pnpm build` - Build production application with Turbopack
-- `pnpm start` - Start production server
-- `pnpm lint` - Run ESLint
 
 ### Backend Development (in `/backend` directory)
-- `uv run workflow` - Run workflow.py with default test case
-- `uv run server` - Start backend server with auto-reload
-- `uv run dev` - Start backend server with auto-reload (all interfaces)
+
+Package Manager: `uv`
+
+- `uv run dev` - Start backend server with auto-reload
 - `curl -X GET "http://127.0.0.1:8000/health"` - Health check endpoint
 - `curl -X POST "http://127.0.0.1:8000/agent" -H "Content-Type: application/json" -d '{"message": "Hello"}'` - Send chat request
-
-### Package Managers
-- Frontend: `pnpm` (Node.js/TypeScript)
-- Backend: `uv` (Python)
 
 ## Architecture
 

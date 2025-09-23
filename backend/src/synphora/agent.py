@@ -11,6 +11,7 @@ from synphora.sse import ( SseEvent, RunStartedEvent, RunFinishedEvent, TextMess
 from synphora.langgraph_sse import write_sse_event
 from synphora.llm import create_llm_client
 from synphora.tool import ArticleEvaluator
+from synphora.artifact_manager import artifact_manager
 
 import logging
 
@@ -76,25 +77,6 @@ def reason_node(state: AgentState) -> AgentState:
     tools = ArticleEvaluator.get_tools()
     llm = create_llm_client()
     llm_with_tools = llm.bind_tools(tools)
-    
-    tool_decision_system_prompt = """
-你是一个智能助手，可以使用工具来帮助用户处理文章相关的任务。
-"""
-    
-    tool_decision_user_prompt = f"""
-根据用户的请求，决定调用哪个工具来完成任务。
-
-先输出你拥有的工具，然后输出你决定调用的工具。
-
-注意：你无需考虑文章内容来自哪里，工具会自动获取文章内容。
-
-用户请求：{state['request'].message}
-"""
-    
-    tool_decision_messages = [
-        SystemMessage(content=tool_decision_system_prompt),
-        HumanMessage(content=tool_decision_user_prompt),
-    ]
 
     # 使用分片归并：累积所有chunk，最后合并成完整AIMessage
     message_id = generate_id()
@@ -102,7 +84,7 @@ def reason_node(state: AgentState) -> AgentState:
     # 用于归并的累加器
     accumulated_chunks = []
     
-    for chunk in llm_with_tools.stream(tool_decision_messages):
+    for chunk in llm_with_tools.stream(state["messages"]):
         # 累积分片用于最终归并
         accumulated_chunks.append(chunk)
         
@@ -110,9 +92,22 @@ def reason_node(state: AgentState) -> AgentState:
         if chunk.content:
             write_sse_event(TextMessageEvent.new(message_id=message_id, content=chunk.content))
     
-    final_message = merge_chunks(accumulated_chunks)
+    ai_message = merge_chunks(accumulated_chunks)
     
-    return {"messages": tool_decision_messages + [final_message]}
+    return {"messages": [ai_message]}
+
+
+def should_continue(state: AgentState) -> str:
+    """决定是否继续循环的条件函数"""
+    messages = state["messages"]
+    last_message = messages[-1]
+    
+    # 如果最后一条消息包含工具调用，则继续到act节点
+    if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
+        return "act"
+    # 否则结束
+    else:
+        return "end"
 
 
 def merge_chunks(accumulated_chunks):
@@ -138,20 +133,31 @@ def end_node(state: AgentState) -> AgentState:
 
 
 def build_agent_graph() -> StateGraph:
-    """构建LangGraph代理图"""
+    """构建LangGraph代理图 - 标准 re-act 模式"""
     graph = StateGraph(AgentState)
     
     # 添加节点
     graph.add_node("start", start_node)
     graph.add_node("reason", reason_node)
-    graph.add_node("act", ToolNode(ArticleEvaluator.get_tools()))  # 直接使用 ToolNode
+    graph.add_node("act", ToolNode(ArticleEvaluator.get_tools()))
     graph.add_node("end", end_node)
     
-    # 连接节点
+    # 连接节点 - re-act 模式
     graph.add_edge(START, "start")
     graph.add_edge("start", "reason")
-    graph.add_edge("reason", "act")
-    graph.add_edge("act", "end")
+    
+    # 从 reason 节点添加条件边，根据是否有工具调用决定下一步
+    graph.add_conditional_edges(
+        "reason",
+        should_continue,
+        {
+            "act": "act",      # 如果有工具调用，执行工具
+            "end": "end"       # 如果没有工具调用，结束
+        }
+    )
+    
+    # 从 act 节点返回到 reason 节点，形成循环
+    graph.add_edge("act", "reason")
     graph.add_edge("end", END)
     
     return graph.compile()
@@ -163,11 +169,45 @@ async def generate_agent_response(request: AgentRequest) -> AsyncGenerator[SseEv
     """
     
     graph = build_agent_graph()
+
+    original_artifact = artifact_manager.get_original_artifact()
+
+    system_prompt = """
+你是 Synphora，一个智能写作助手。
+"""
+    
+    user_prompt = f"""
+## 任务描述
+
+根据用户的请求，优先使用工具来完成任务。如果找不到合适的工具，请直接说明你无法完成任务。
+
+## 注意事项
+
+1. 请勿向用户透露「Artifact」「工具」等内部概念，会引起用户的疑惑。
+
+- 正例：我将为你生成文章评价。
+- 反例：根据您提供的 Artifact ID，我将使用评价工具来分析文章质量。
+- 正例：评价结果已生成。
+- 反例：评价结果已生成，Artifact ID 为：ae259520。
+
+2. 工具的结果会通过 Artifact 的形式展示给用户，所以请勿赘述工具的结果，只需告诉用户结果已生成。
+
+## 任务信息
+
+用户文章原文的 Artifact ID: {original_artifact.id}
+
+用户请求：{request.message}
+"""
+
+    initial_messages = [
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=user_prompt),
+    ]
     
     # 创建初始消息
     initial_state: AgentState = {
         "request": request,
-        "messages": []
+        "messages": initial_messages,
     }
     
     # 使用LangGraph的流式处理，订阅custom事件来获取SSE事件
