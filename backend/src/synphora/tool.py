@@ -1,82 +1,45 @@
 from langchain_core.tools import tool
 from langchain_core.tools import Tool
-from typing import Callable, Awaitable, AsyncGenerator
-from abc import ABC, abstractmethod
 import uuid
 
 from synphora.sse import (
-    SseEvent, ArtifactContentStartEvent, ArtifactContentChunkEvent, 
+    ArtifactContentStartEvent, ArtifactContentChunkEvent, 
     ArtifactContentCompleteEvent, ArtifactListUpdatedEvent
 )
 from synphora.llm import create_llm_client
 from synphora.artifact_manager import artifact_manager
 from synphora.models import ArtifactType, ArtifactRole, ArtifactData
+from synphora.langgraph_sse import write_sse_event
 
 
-class AsyncStreamingTool(ABC):
-    """基础异步流式工具类，支持事件回调机制"""
-    
-    def __init__(self, event_callback: Callable[[SseEvent], Awaitable[None]] = None):
-        self.event_callback = event_callback
-    
-    async def yield_event(self, event: SseEvent) -> None:
-        """辅助方法：发送SSE事件到回调"""
-        if self.event_callback:
-            await self.event_callback(event)
-    
-    @abstractmethod
-    async def execute(self, **kwargs) -> AsyncGenerator[SseEvent, None]:
-        """执行工具逻辑并生成事件流"""
-        pass
+def generate_id() -> str:
+    """生成唯一ID"""
+    return str(uuid.uuid4())[:8]
 
 
-class DemoTool:
+class ArticleEvaluator:
+    """文章评价工具类"""
 
     @classmethod
     def get_tools(cls) -> list[Tool]:
         return [
-            cls.comment_article,
-            cls.analyze_article_position,
-            cls.generate_article_title,
+            cls.evaluate_article,
         ]
-
-    @staticmethod
-    @tool
-    def comment_article() -> str:
-        """评价这篇文章"""
-        return "这篇文章很好"
-
-    @staticmethod
-    @tool
-    def analyze_article_position() -> str:
-        """分析这篇文章的定位"""
-        return "这篇文章的定位很明确"
-
-    @staticmethod
-    @tool
-    def generate_article_title() -> str:
-        """生成文章标题"""
-        return "给你一个标题：重新定义数字化转型"
-
-
-class ArticleEvaluationTool(AsyncStreamingTool):
-    """文章评价工具，支持流式生成评价内容"""
     
-    def generate_id(self) -> str:
-        return str(uuid.uuid4())[:8]
-    
-    async def execute(self) -> AsyncGenerator[SseEvent, None]:
-        """执行文章评价并生成SSE事件流"""
+    @staticmethod
+    @tool
+    def evaluate_article() -> str:
+        """评价这篇文章的质量，包括读者画像分析和六大维度评估"""
         
         # 1. 发送ARTIFACT_CONTENT_START事件
-        artifact_id = self.generate_id()
+        artifact_id = generate_id()
         artifact_title = "文章评价"
         
-        yield ArtifactContentStartEvent.new(
-            artifact_id=artifact_id,
-            title=artifact_title,
-            artifact_type=ArtifactType.COMMENT.value
-        )
+        write_sse_event(ArtifactContentStartEvent.new(
+                artifact_id=artifact_id,
+                title=artifact_title,
+                artifact_type=ArtifactType.COMMENT.value
+        ))
         
         # 2. 准备评价prompt
         original_artifact = artifact_manager.get_original_artifact()
@@ -149,17 +112,17 @@ class ArticleEvaluationTool(AsyncStreamingTool):
         llm = create_llm_client()
         llm_result_content = ''
         
-        # 4. 流式发送ARTIFACT_CONTENT_CHUNK事件
+        # 4. 流式发送ARTIFACT_CONTENT_CHUNK事件 - 实时流式处理
         for chunk in llm.stream(messages):
             if chunk.content:
-                yield ArtifactContentChunkEvent.new(
+                write_sse_event(ArtifactContentChunkEvent.new(
                     artifact_id=artifact_id, 
                     content=chunk.content
-                )
+                ))
                 llm_result_content += chunk.content
         
         # 5. 发送ARTIFACT_CONTENT_COMPLETE事件
-        yield ArtifactContentCompleteEvent.new(artifact_id=artifact_id)
+        write_sse_event(ArtifactContentCompleteEvent.new(artifact_id=artifact_id))
         
         # 6. 创建artifact并发送ARTIFACT_LIST_UPDATED事件
         artifact = artifact_manager.create_artifact(
@@ -169,9 +132,12 @@ class ArticleEvaluationTool(AsyncStreamingTool):
             role=ArtifactRole.ASSISTANT,
         )
         
-        yield ArtifactListUpdatedEvent.new(
+        write_sse_event(ArtifactListUpdatedEvent.new(
             artifact_id=artifact.id,
             title=artifact.title,
             artifact_type=artifact.type.value,
             role=artifact.role.value,
-        )
+        ))
+        
+        return f"【工具完成】文章评价（artifact_id: {artifact_id}）"
+

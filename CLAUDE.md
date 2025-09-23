@@ -15,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `uv run server` - Start backend server with auto-reload
 - `uv run dev` - Start backend server with auto-reload (all interfaces)
 - `curl -X GET "http://127.0.0.1:8000/health"` - Health check endpoint
-- `curl -X POST "http://127.0.0.1:8000/agent" -H "Content-Type: application/json" -d '{"text": "Hello", "model": "openai/gpt-4o", "webSearch": false}'` - Send chat request
+- `curl -X POST "http://127.0.0.1:8000/agent" -H "Content-Type: application/json" -d '{"message": "Hello"}'` - Send chat request
 
 ### Package Managers
 - Frontend: `pnpm` (Node.js/TypeScript)
