@@ -43,7 +43,7 @@ class DemoTool:
     @staticmethod
     @tool
     def comment_article() -> str:
-        """评论这篇文章"""
+        """评价这篇文章"""
         return "这篇文章很好"
 
     @staticmethod

@@ -66,11 +66,13 @@ async def generate_agent_response(request: AgentRequest) -> AsyncGenerator[SseEv
     
     # 配置开关控制使用模式
     if USE_AGENT_MODE:
+        print(f'use agent mode, request: {request}')
         async for event in agent_generate_response(request):
             yield event
         return
     
     # 原有逻辑保持不变
+    print(f'use original mode, request: {request}')
     async for event in original_generate_agent_response(request):
         yield event
 
@@ -227,180 +229,78 @@ async def agent_generate_response(request: AgentRequest) -> AsyncGenerator[SseEv
     2. LLM决策工具调用并执行
     """
     
-    try:
-        # 1. 发送 RUN_STARTED
-        yield RunStartedEvent.new()
-        
-        # 2. LLM生成确认消息
-        original_artifact = artifact_manager.get_original_artifact()
-        
-        confirmation_system_prompt = """
-你是一个专业的文章写作助手。用户会向你请求对文章进行某种操作。
-请根据用户的请求，生成一个简短的确认消息，告知用户你即将执行什么操作。
-确认消息应该简洁、友好且明确表达你将要做的事情。
-"""
-        
-        confirmation_user_prompt = f"""
-用户请求：{request.message}
-
-请生成一个确认消息，告知用户你即将执行的操作。
-"""
-        
-        confirmation_messages = [
-            SystemMessage(content=confirmation_system_prompt),
-            HumanMessage(content=confirmation_user_prompt),
-        ]
-        
-        llm = create_llm_client()
-        try:
-            confirmation_result = await asyncio.wait_for(
-                llm.ainvoke(confirmation_messages),
-                timeout=AGENT_TIMEOUT_SECONDS
-            )
-        except asyncio.TimeoutError:
-            logger.warning("Confirmation generation timeout, using fallback")
-            # Create a mock result object
-            class MockResult:
-                content = "我将为您处理这个请求"
-            confirmation_result = MockResult()
-        except Exception as e:
-            logger.warning(f"Confirmation generation error: {e}, using fallback")
-            # Create a mock result object
-            class MockResult:
-                content = "我将为您处理这个请求"
-            confirmation_result = MockResult()
-        
-        # 发送确认消息
-        confirmation_message_id = generate_id()
-        yield TextMessageEvent.new(
-            message_id=confirmation_message_id, 
-            content=confirmation_result.content
-        )
-        
-        # 3. LLM决策工具调用
-        tools = DemoTool.get_tools()
-        llm_with_tools = create_llm_with_tools(tools)
-        
-        tool_decision_system_prompt = """
+    # 1. 发送 RUN_STARTED
+    yield RunStartedEvent.new()
+    
+    # 3. LLM决策工具调用
+    tools = DemoTool.get_tools()
+    llm = create_llm_client()
+    llm_with_tools = llm.bind_tools(tools)
+    
+    tool_decision_system_prompt = """
 你是一个智能助手，可以使用工具来帮助用户处理文章相关的任务。
+"""
+    
+    tool_decision_user_prompt = f"""
 根据用户的请求，决定调用哪个工具来完成任务。
 
-可用工具：
-- comment_article: 评价文章
-- analyze_article_position: 分析文章定位
-- generate_article_title: 生成文章标题
-"""
-        
-        tool_decision_user_prompt = f"""
 用户请求：{request.message}
-
-请根据用户的请求决定调用哪个工具。
 """
-        
-        tool_decision_messages = [
-            SystemMessage(content=tool_decision_system_prompt),
-            HumanMessage(content=tool_decision_user_prompt),
-        ]
-        
-        try:
-            tool_decision_result = await asyncio.wait_for(
-                llm_with_tools.ainvoke(tool_decision_messages),
-                timeout=AGENT_TIMEOUT_SECONDS
-            )
-        except asyncio.TimeoutError:
-            logger.warning("Tool decision timeout, falling back to original mode")
-            raise
-        except Exception as e:
-            logger.warning(f"Tool decision error: {e}, falling back to original mode")
-            raise
-        
-        # 4. 执行工具并委托事件
-        if tool_decision_result.tool_calls:
-            async for event in execute_tool_with_callback(tool_decision_result.tool_calls[0], original_artifact):
-                yield event
-        else:
-            # 如果没有工具调用，生成普通回复
-            message_id = generate_id()
+    
+    tool_decision_messages = [
+        SystemMessage(content=tool_decision_system_prompt),
+        HumanMessage(content=tool_decision_user_prompt),
+    ]
+
+    # change to stream
+    response = llm_with_tools.stream(tool_decision_messages)
+    tool_calls = []
+    message_id = generate_id()
+    for chunk in response:
+        if chunk.content:
             yield TextMessageEvent.new(
                 message_id=message_id,
-                content="抱歉，我无法确定如何处理您的请求。请尝试更具体的指令。"
+                content=chunk.content
             )
-        
-        # 5. 发送 RUN_FINISHED
-        yield RunFinishedEvent.new()
-        
-    except asyncio.TimeoutError:
-        logger.error(f"Agent timeout for request: {request.message}")
-        # 超时降级到原有模式
-        async for event in original_generate_agent_response(request):
-            yield event
-    except Exception as e:
-        logger.error(f"Agent error: {e}, falling back to original mode")
-        # 异常降级到原有模式
-        async for event in original_generate_agent_response(request):
-            yield event
+        if chunk.tool_calls:
+            tool_calls.extend(chunk.tool_calls)
 
+    print(tool_calls)
 
-async def execute_tool_with_callback(tool_call, original_artifact: ArtifactData) -> AsyncGenerator[SseEvent, None]:
+    # 4. 执行工具并委托事件
+    if not tool_calls:
+        raise ValueError("没有工具调用")
+    
+    tool_name = tool_calls[0]['name']
+    original_artifact = artifact_manager.get_original_artifact()
+    async for event in execute_tool_with_callback(tool_name, original_artifact):
+            yield event
+    
+    # 5. 发送 RUN_FINISHED
+    yield RunFinishedEvent.new()
+        
+
+async def execute_tool_with_callback(tool_name, original_artifact: ArtifactData) -> AsyncGenerator[SseEvent, None]:
     """
     执行工具并通过事件委托机制处理SSE事件
     """
     
-    try:
-        tool_name = tool_call['name']
+    if tool_name in ['comment_article', 'evaluate_article']:
+        tool = ArticleEvaluationTool()
         
-        if tool_name in ['comment_article', 'evaluate_article']:
-            # 使用ArticleEvaluationTool
-            tool = ArticleEvaluationTool()
-            
-            def format_artifact(artifact: ArtifactData) -> str:
-                return f"""<file>
-  <name>{artifact.title}</name>
-  <content>{artifact.content}</content>
+        def format_artifact(artifact: ArtifactData) -> str:
+            return f"""<file>
+<name>{artifact.title}</name>
+<content>{artifact.content}</content>
 </file>"""
-            
-            article_content = format_artifact(original_artifact)
-            
-            # Note: AsyncGenerator cannot use asyncio.wait_for directly
-            # Using a different approach for timeout handling
-            async for event in tool.execute(article_content=article_content):
-                yield event
         
-        elif tool_name == 'analyze_article_position':
-            # 暂时使用简化版本，后续可扩展为专门的分析工具
-            message_id = generate_id()
-            yield TextMessageEvent.new(
-                message_id=message_id,
-                content="文章定位分析功能正在开发中..."
-            )
+        article_content = format_artifact(original_artifact)
         
-        elif tool_name == 'generate_article_title':
-            # 暂时使用简化版本，后续可扩展为专门的标题生成工具
-            message_id = generate_id()
-            yield TextMessageEvent.new(
-                message_id=message_id,
-                content="文章标题生成功能正在开发中..."
-            )
-        
-        else:
-            # 未知工具，返回错误消息
-            message_id = generate_id()
-            yield TextMessageEvent.new(
-                message_id=message_id,
-                content=f"未知工具: {tool_name}"
-            )
-            
-    except asyncio.TimeoutError:
-        logger.error(f"Tool execution timeout: {tool_call.get('name', 'unknown')}")
-        message_id = generate_id()
-        yield TextMessageEvent.new(
-            message_id=message_id,
-            content="工具执行超时，请重试"
-        )
-    except Exception as e:
-        logger.error(f"Tool execution error: {e}")
-        message_id = generate_id()
-        yield TextMessageEvent.new(
-            message_id=message_id,
-            content=f"工具执行出错: {str(e)}"
-        )
+        # Note: AsyncGenerator cannot use asyncio.wait_for directly
+        # Using a different approach for timeout handling
+        async for event in tool.execute(article_content=article_content):
+            yield event
+    
+    else:
+        # 未知工具，返回错误消息
+        raise ValueError(f"未知工具: {tool_name}")
