@@ -1,9 +1,11 @@
-from typing import AsyncGenerator, TypedDict, List, Any
+from typing import AsyncGenerator, TypedDict, Annotated
 from pydantic import BaseModel
 import uuid
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from enum import Enum
 from langgraph.graph import StateGraph, START, END
+from langgraph.graph.message import add_messages
+from langgraph.prebuilt import ToolNode
 
 from synphora.sse import ( SseEvent, RunStartedEvent, RunFinishedEvent, TextMessageEvent )
 from synphora.langgraph_sse import write_sse_event
@@ -29,9 +31,6 @@ class Suggestions(Enum):
     WRITE_CANDIDATE_TITLES = "撰写候选标题"
 
 
-# Agent configuration
-USE_AGENT_MODE = True  # 配置开关控制使用模式
-
 def generate_id() -> str:
     return str(uuid.uuid4())[:8]
 
@@ -55,13 +54,10 @@ async def generate_llm_message(messages) -> AsyncGenerator[SseEvent, None]:
             yield TextMessageEvent.new(message_id=message_id, content=chunk.content)
 
 
-
-
 # LangGraph State Schema
 class AgentState(TypedDict):
     request: AgentRequest
-    tool_calls: List[Any]
-    finished: bool
+    messages: Annotated[list, add_messages]
 
 
 def start_node(state: AgentState) -> AgentState:
@@ -100,41 +96,37 @@ def reason_node(state: AgentState) -> AgentState:
         HumanMessage(content=tool_decision_user_prompt),
     ]
 
-    response = llm_with_tools.stream(tool_decision_messages)
-    tool_calls = []
+    # 使用分片归并：累积所有chunk，最后合并成完整AIMessage
     message_id = generate_id()
     
-    for chunk in response:
+    # 用于归并的累加器
+    accumulated_chunks = []
+    
+    for chunk in llm_with_tools.stream(tool_decision_messages):
+        # 累积分片用于最终归并
+        accumulated_chunks.append(chunk)
+        
+        # 流式输出文本内容到SSE
         if chunk.content:
             write_sse_event(TextMessageEvent.new(message_id=message_id, content=chunk.content))
-        if chunk.tool_calls:
-            tool_calls.extend(chunk.tool_calls)
-
-    state['tool_calls'] = tool_calls
-    return state
-
-
-def act_node(state: AgentState) -> AgentState:
-    """执行节点：执行工具并实时流式发送SSE事件"""
-    print(f'act_node, state: {state}')
-
-    tool_calls = state['tool_calls']
-    if not tool_calls:
-        raise ValueError("没有工具调用")
-
-    tool_name = tool_calls[0]['name']
     
-    if tool_name in ['evaluate_article']:
-        # 调用类中的标准LangGraph工具函数，传入空的工具输入
-        result = ArticleEvaluator.evaluate_article.invoke({})
-        print(f"Tool execution result: {result}")
-        
-    else:
-        # 未知工具，返回错误消息
-        raise ValueError(f"未知工具: {tool_name}")
+    final_message = merge_chunks(accumulated_chunks)
+    
+    return {"messages": tool_decision_messages + [final_message]}
 
-    return state
 
+def merge_chunks(accumulated_chunks):
+    # 使用LangChain的分片归并机制得到完整AIMessage
+    # 这样可以正确处理tool_calls、ID等结构化信息
+    final_message = None
+    for chunk in accumulated_chunks:
+        if final_message is None:
+            final_message = chunk
+        else:
+            # 使用 + 运算符合并分片，这是LangChain推荐的方式
+            final_message = final_message + chunk
+
+    return final_message
 
 def end_node(state: AgentState) -> AgentState:
     """结束节点：发送运行完成事件"""
@@ -142,7 +134,6 @@ def end_node(state: AgentState) -> AgentState:
     
     write_sse_event(RunFinishedEvent.new())
     
-    state['finished'] = True
     return state
 
 
@@ -153,7 +144,7 @@ def build_agent_graph() -> StateGraph:
     # 添加节点
     graph.add_node("start", start_node)
     graph.add_node("reason", reason_node)
-    graph.add_node("act", act_node)
+    graph.add_node("act", ToolNode(ArticleEvaluator.get_tools()))  # 直接使用 ToolNode
     graph.add_node("end", end_node)
     
     # 连接节点
@@ -172,10 +163,11 @@ async def generate_agent_response(request: AgentRequest) -> AsyncGenerator[SseEv
     """
     
     graph = build_agent_graph()
+    
+    # 创建初始消息
     initial_state: AgentState = {
         "request": request,
-        "tool_calls": [],
-        "finished": False
+        "messages": []
     }
     
     # 使用LangGraph的流式处理，订阅custom事件来获取SSE事件
