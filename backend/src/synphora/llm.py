@@ -4,6 +4,7 @@ from pydantic import BaseModel, SecretStr
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langchain_core.tools import Tool
 
 # 加载 .env 文件
 load_dotenv()
@@ -31,6 +32,18 @@ def create_llm_client() -> ChatOpenAI:
         api_key=llm_config.api_key.get_secret_value(),
         model=llm_config.model,
     )
+
+def create_llm_with_tools(tools: list[Tool]) -> ChatOpenAI:
+    """创建绑定工具的LLM客户端"""
+    llm_config = _get_llm_config()
+    
+    llm = ChatOpenAI(
+        base_url=llm_config.base_url,
+        api_key=llm_config.api_key.get_secret_value(),
+        model=llm_config.model,
+    )
+    
+    return llm.bind_tools(tools) if tools else llm
 
 # 测试
 if __name__ == "__main__":
