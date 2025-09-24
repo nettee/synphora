@@ -10,6 +10,10 @@ class ArtifactManager:
         storage_path = os.getenv('SYNPHORA_STORAGE_PATH', 'tests/data/store')
         self._storage = FileStorage(storage_path)
 
+    def generate_artifact_id(self) -> str:
+        """生成 artifact ID"""
+        return self._storage.generate_artifact_id()
+
     def create_artifact(
         self,
         title: str,
@@ -26,6 +30,17 @@ class ArtifactManager:
             role=role,
             description=description,
         )
+
+    def create_artifact_with_id(self,
+        artifact_id: str,
+        title: str,
+        content: str,
+        artifact_type: ArtifactType = ArtifactType.ORIGINAL,
+        role: ArtifactRole = ArtifactRole.USER,
+        description: str | None = None,
+    ) -> ArtifactData:
+        """用户指定 ID 创建新的 artifact"""
+        return self._storage.create_artifact_with_id(artifact_id, title, content, artifact_type, role, description)
 
     def get_artifact(self, artifact_id: str) -> ArtifactData | None:
         """根据 ID 获取 artifact"""

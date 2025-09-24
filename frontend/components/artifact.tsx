@@ -19,6 +19,8 @@ export const ArtifactDetail = ({
   artifact: ArtifactData;
   onCloseArtifact: () => void;
 }) => {
+  const showDebugInfo = process.env.NEXT_PUBLIC_SHOW_DEBUG_INFO === "true";
+
   return (
     <Artifact data-role="artifact-detail" className="h-full">
       <ArtifactHeader>
@@ -28,11 +30,12 @@ export const ArtifactDetail = ({
             {artifact.isStreaming && (
               <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
             )}
+            {showDebugInfo && (
+              <span className="text-xs text-gray-500">{artifact.id}</span>
+            )}
           </ArtifactTitle>
           {artifact.description && (
-            <ArtifactDescription>
-              {artifact.description}
-            </ArtifactDescription>
+            <ArtifactDescription>{artifact.description}</ArtifactDescription>
           )}
         </div>
         <ArtifactActions>
@@ -46,9 +49,7 @@ export const ArtifactDetail = ({
       </ArtifactHeader>
       <ArtifactContent className="h-full">
         {/* 定义 classname 为 streamdown，这样 globals.css 中的样式会生效 */}
-        <Streamdown className="streamdown">
-          {artifact.content}
-        </Streamdown>
+        <Streamdown className="streamdown">{artifact.content}</Streamdown>
         {artifact.isStreaming && (
           <div className="mt-2 text-sm text-gray-500 flex items-center gap-1">
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -68,6 +69,8 @@ export const ArtifactList = ({
   artifacts: ArtifactData[];
   onOpenArtifact: (artifactId: string) => void;
 }) => {
+  const showDebugInfo = process.env.NEXT_PUBLIC_SHOW_DEBUG_INFO === "true";
+
   const userArtifacts = artifacts.filter(
     (artifact) => artifact.role === MessageRole.USER
   );
@@ -91,6 +94,9 @@ export const ArtifactList = ({
               {artifact.description}
             </div>
           )}
+          {showDebugInfo && (
+            <div className="text-xs text-gray-500 mt-1">{artifact.id}</div>
+          )}
         </div>
         <div
           className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
@@ -106,7 +112,10 @@ export const ArtifactList = ({
   );
 
   return (
-    <div data-role="artifact-list" className="h-full flex flex-col bg-white border border-gray-200 rounded-lg">
+    <div
+      data-role="artifact-list"
+      className="h-full flex flex-col bg-white border border-gray-200 rounded-lg"
+    >
       <div className="p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
         <h3 className="text-sm font-medium text-gray-900">所有文件</h3>
       </div>

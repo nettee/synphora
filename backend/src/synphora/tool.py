@@ -45,7 +45,7 @@ class ArticleEvaluator:
         print(f'evaluate_article, original_artifact_id: {original_artifact_id}')
 
         # 1. 发送ARTIFACT_CONTENT_START事件
-        generated_artifact_id = generate_id()
+        generated_artifact_id = artifact_manager.generate_artifact_id()
         artifact_title = "文章评价"
 
         write_sse_event(
@@ -97,7 +97,9 @@ class ArticleEvaluator:
         )
 
         # 6. 创建artifact并发送ARTIFACT_LIST_UPDATED事件
-        artifact = artifact_manager.create_artifact(
+        # 保证artifact_id与生成的一致，避免前端显示错误
+        artifact = artifact_manager.create_artifact_with_id(
+            artifact_id=generated_artifact_id,
             title=artifact_title,
             content=llm_result_content,
             artifact_type=ArtifactType.COMMENT,
@@ -113,4 +115,4 @@ class ArticleEvaluator:
             )
         )
 
-        return f"【工具完成】文章评价（artifact_id: {generated_artifact_id}）"
+        return f"【工具完成】文章评价（artifact_id: {artifact.id}）"

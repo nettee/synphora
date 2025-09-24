@@ -52,6 +52,10 @@ class FileStorage:
         """获取数据文件路径"""
         return self.storage_path / f"{artifact_id}.txt"
 
+    def generate_artifact_id(self) -> str:
+        """生成 artifact ID"""
+        return str(uuid.uuid4())
+
     def create_artifact(
         self,
         title: str,
@@ -61,7 +65,18 @@ class FileStorage:
         description: str | None = None,
     ) -> ArtifactData:
         """创建新的 artifact"""
-        artifact_id = str(uuid.uuid4())
+        artifact_id = self.generate_artifact_id()
+        return self.create_artifact_with_id(artifact_id, title, content, artifact_type, role, description)
+
+    def create_artifact_with_id(self,
+        artifact_id: str,
+        title: str,
+        content: str,
+        artifact_type: ArtifactType = ArtifactType.ORIGINAL,
+        role: ArtifactRole = ArtifactRole.USER,
+        description: str | None = None,
+    ) -> ArtifactData:
+        """用户指定 ID 创建新的 artifact"""
         now = datetime.now().isoformat()
 
         # 保存内容到数据文件
