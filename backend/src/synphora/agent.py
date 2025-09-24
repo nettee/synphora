@@ -26,18 +26,9 @@ class AgentRequest(BaseModel):
     message: str
 
 
-class Suggestions(Enum):
-    EVALUATE_ARTICLE = "评价这篇文章"
-    ANALYZE_ARTICLE_POSITION = "分析文章定位"
-    WRITE_CANDIDATE_TITLES = "撰写候选标题"
-
-
 def generate_id() -> str:
     return str(uuid.uuid4())[:8]
 
-def get_suggestions():
-    suggestions = [suggestion.value for suggestion in Suggestions]
-    return suggestions
 
 async def generate_text_message(content_parts: list[str]) -> AsyncGenerator[SseEvent, None]:
     message_id = generate_id()

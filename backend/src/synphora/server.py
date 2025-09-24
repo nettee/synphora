@@ -7,7 +7,6 @@ from typing import List, Optional
 
 from synphora.agent import AgentRequest, generate_agent_response
 from synphora.sse import SseEvent, EventType    
-from synphora.agent import get_suggestions
 from synphora.artifact_manager import artifact_manager
 from synphora.models import ArtifactData, ArtifactType, ArtifactRole
 
@@ -28,16 +27,16 @@ class HealthResponse(BaseModel):
     timestamp: str
     version: str
 
-class SuggestionResponse(BaseModel):
-    suggestions: List[str]
 
 class CreateArtifactRequest(BaseModel):
     title: str
     content: str
     description: Optional[str] = None
 
+
 class ArtifactListResponse(BaseModel):
     artifacts: List[ArtifactData]
+
 
 @app.get("/health", response_model=HealthResponse)
 async def api_health():
@@ -47,12 +46,6 @@ async def api_health():
         timestamp=datetime.now().isoformat(),
         version="1.0.0"
     )
-
-@app.get("/suggestions", response_model=SuggestionResponse)
-async def api_suggestions():
-    """Get chat suggestions from environment variables"""
-    suggestions = get_suggestions()
-    return SuggestionResponse(suggestions=suggestions)
 
 @app.post("/agent")
 async def api_agent(request: AgentRequest):
