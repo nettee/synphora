@@ -6,8 +6,6 @@ from typing import Annotated, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
-
-
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel
@@ -15,7 +13,7 @@ from pydantic import BaseModel
 from synphora.artifact_manager import artifact_manager
 from synphora.langgraph_sse import write_sse_event
 from synphora.llm import create_llm_client
-from synphora.prompt import get_system_prompt, get_user_prompt
+from synphora.prompt import AgentPrompts
 from synphora.sse import RunFinishedEvent, RunStartedEvent, SseEvent, TextMessageEvent
 from synphora.tool import ArticleEvaluator
 
@@ -183,20 +181,19 @@ async def generate_agent_response(
 
     graph = build_agent_graph()
 
+    # 创建初始消息
     original_artifact = artifact_manager.get_original_artifact()
-
-    system_prompt = get_system_prompt()
-    user_prompt = get_user_prompt(
-        original_artifact_id=original_artifact.id,
-        user_message=request.message
-    )
-
+    agent_prompts = AgentPrompts()
     initial_messages = [
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=user_prompt),
+        SystemMessage(content=agent_prompts.system()),
+        HumanMessage(
+            content=agent_prompts.user(
+                original_artifact_id=original_artifact.id, user_message=request.message
+            )
+        ),
     ]
 
-    # 创建初始消息
+    # 创建初始状态
     initial_state: AgentState = {
         "request": request,
         "messages": initial_messages,

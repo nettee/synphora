@@ -31,7 +31,8 @@ class ArtifactManager:
             description=description,
         )
 
-    def create_artifact_with_id(self,
+    def create_artifact_with_id(
+        self,
         artifact_id: str,
         title: str,
         content: str,
@@ -40,7 +41,9 @@ class ArtifactManager:
         description: str | None = None,
     ) -> ArtifactData:
         """用户指定 ID 创建新的 artifact"""
-        return self._storage.create_artifact_with_id(artifact_id, title, content, artifact_type, role, description)
+        return self._storage.create_artifact_with_id(
+            artifact_id, title, content, artifact_type, role, description
+        )
 
     def get_artifact(self, artifact_id: str) -> ArtifactData | None:
         """根据 ID 获取 artifact"""

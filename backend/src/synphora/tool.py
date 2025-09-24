@@ -1,12 +1,13 @@
 import uuid
 
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import Tool, tool
 
 from synphora.artifact_manager import artifact_manager
-from synphora.prompt import get_article_evaluator_system_prompt, get_article_evaluator_user_prompt
 from synphora.langgraph_sse import write_sse_event
 from synphora.llm import create_llm_client
-from synphora.models import ArtifactData, ArtifactRole, ArtifactType
+from synphora.models import ArtifactRole, ArtifactType
+from synphora.prompt import ArticleEvaluatorPrompts
 from synphora.sse import (
     ArtifactContentChunkEvent,
     ArtifactContentCompleteEvent,
@@ -58,26 +59,15 @@ class ArticleEvaluator:
 
         # 2. 准备评价prompt
         original_artifact = artifact_manager.get_artifact(original_artifact_id)
-
-        def format_artifact(artifact: ArtifactData) -> str:
-            return f"""<file>
-<name>{artifact.title}</name>
-<content>{artifact.content}</content>
-</file>"""
-
-        article_content = format_artifact(original_artifact)
-
-        system_prompt = get_article_evaluator_system_prompt()
-        user_prompt = get_article_evaluator_user_prompt(article_content=article_content)
-
-        # 3. 调用LLM并流式生成内容
-        from langchain_core.messages import HumanMessage, SystemMessage
-
+        article_evaluator_prompts = ArticleEvaluatorPrompts()
         messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=user_prompt),
+            SystemMessage(content=article_evaluator_prompts.system()),
+            HumanMessage(
+                content=article_evaluator_prompts.user(artifact=original_artifact)
+            ),
         ]
 
+        # 3. 调用LLM并流式生成内容
         llm = create_llm_client()
         llm_result_content = ''
 

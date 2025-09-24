@@ -66,9 +66,12 @@ class FileStorage:
     ) -> ArtifactData:
         """创建新的 artifact"""
         artifact_id = self.generate_artifact_id()
-        return self.create_artifact_with_id(artifact_id, title, content, artifact_type, role, description)
+        return self.create_artifact_with_id(
+            artifact_id, title, content, artifact_type, role, description
+        )
 
-    def create_artifact_with_id(self,
+    def create_artifact_with_id(
+        self,
         artifact_id: str,
         title: str,
         content: str,
