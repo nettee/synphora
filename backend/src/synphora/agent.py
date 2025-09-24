@@ -1,10 +1,13 @@
 import logging
 import uuid
 from collections.abc import AsyncGenerator
+from enum import Enum
 from typing import Annotated, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
+
+
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel
@@ -21,6 +24,15 @@ logger = logging.getLogger(__name__)
 # 超时配置
 AGENT_TIMEOUT_SECONDS = 30
 TOOL_TIMEOUT_SECONDS = 60
+
+
+class NodeType(str, Enum):
+    """代理图节点类型"""
+
+    FIRST = "start"
+    REASON = "reason"
+    ACT = "act"
+    LAST = "end"
 
 
 class AgentRequest(BaseModel):
@@ -94,17 +106,17 @@ def reason_node(state: AgentState) -> AgentState:
     return {"messages": [ai_message]}
 
 
-def should_continue(state: AgentState) -> str:
+def should_continue(state: AgentState) -> NodeType:
     """决定是否继续循环的条件函数"""
     messages = state["messages"]
     last_message = messages[-1]
 
     # 如果最后一条消息包含工具调用，则继续到act节点
     if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-        return "act"
+        return NodeType.ACT
     # 否则结束
     else:
-        return "end"
+        return NodeType.LAST
 
 
 def merge_chunks(accumulated_chunks):
@@ -135,28 +147,28 @@ def build_agent_graph() -> StateGraph:
     graph = StateGraph(AgentState)
 
     # 添加节点
-    graph.add_node("start", start_node)
-    graph.add_node("reason", reason_node)
-    graph.add_node("act", ToolNode(ArticleEvaluator.get_tools()))
-    graph.add_node("end", end_node)
+    graph.add_node(NodeType.FIRST, start_node)
+    graph.add_node(NodeType.REASON, reason_node)
+    graph.add_node(NodeType.ACT, ToolNode(ArticleEvaluator.get_tools()))
+    graph.add_node(NodeType.LAST, end_node)
 
     # 连接节点 - re-act 模式
-    graph.add_edge(START, "start")
-    graph.add_edge("start", "reason")
+    graph.add_edge(START, NodeType.FIRST)
+    graph.add_edge(NodeType.FIRST, NodeType.REASON)
 
     # 从 reason 节点添加条件边，根据是否有工具调用决定下一步
     graph.add_conditional_edges(
-        "reason",
+        NodeType.REASON,
         should_continue,
         {
-            "act": "act",  # 如果有工具调用，执行工具
-            "end": "end",  # 如果没有工具调用，结束
+            NodeType.ACT: NodeType.ACT,  # 如果有工具调用，执行工具
+            NodeType.LAST: NodeType.LAST,  # 如果没有工具调用，结束
         },
     )
 
     # 从 act 节点返回到 reason 节点，形成循环
-    graph.add_edge("act", "reason")
-    graph.add_edge("end", END)
+    graph.add_edge(NodeType.ACT, NodeType.REASON)
+    graph.add_edge(NodeType.LAST, END)
 
     return graph.compile()
 
