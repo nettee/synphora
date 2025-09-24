@@ -22,3 +22,9 @@ class ArtifactData(BaseModel):
     content: str
     created_at: str
     updated_at: str
+
+
+class EvaluateType(str, Enum):
+    COMMENT = "comment"
+    TITLE = "title"
+    INTRODUCTION = "introduction"

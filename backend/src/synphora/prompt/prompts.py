@@ -1,4 +1,4 @@
-from synphora.models import ArtifactData
+from synphora.models import ArtifactData, EvaluateType
 
 from .renderer import renderer
 
@@ -19,5 +19,6 @@ class ArticleEvaluatorPrompts:
     def system(self) -> str:
         return renderer.render("article-evaluator-system-prompt.md")
 
-    def user(self, artifact: ArtifactData) -> str:
-        return renderer.render("article-evaluator-user-prompt.md", artifact=artifact)
+    def user(self, type: EvaluateType, artifact: ArtifactData) -> str:
+        file_name = f"article-evaluator-{type.value.lower()}-prompt.md"
+        return renderer.render(file_name, artifact=artifact)

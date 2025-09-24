@@ -15,7 +15,7 @@ from synphora.langgraph_sse import write_sse_event
 from synphora.llm import create_llm_client
 from synphora.prompt import AgentPrompts
 from synphora.sse import RunFinishedEvent, RunStartedEvent, SseEvent, TextMessageEvent
-from synphora.tool import ArticleEvaluator
+from synphora.tool import ArticleEvaluatorTool
 
 # 设置日志
 logger = logging.getLogger(__name__)
@@ -80,7 +80,7 @@ def reason_node(state: AgentState) -> AgentState:
     """推理节点：使用LLM决定调用哪个工具"""
     print(f'reason_node, state: {state}')
 
-    tools = ArticleEvaluator.get_tools()
+    tools = ArticleEvaluatorTool.get_tools()
     llm = create_llm_client()
     llm_with_tools = llm.bind_tools(tools)
 
@@ -148,7 +148,7 @@ def build_agent_graph() -> StateGraph:
     # 添加节点
     graph.add_node(NodeType.FIRST, start_node)
     graph.add_node(NodeType.REASON, reason_node)
-    graph.add_node(NodeType.ACT, ToolNode(ArticleEvaluator.get_tools()))
+    graph.add_node(NodeType.ACT, ToolNode(ArticleEvaluatorTool.get_tools()))
     graph.add_node(NodeType.LAST, end_node)
 
     # 连接节点 - re-act 模式
