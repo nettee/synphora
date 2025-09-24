@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from synphora.artifact_manager import artifact_manager
 from synphora.langgraph_sse import write_sse_event
 from synphora.llm import create_llm_client
+from synphora.prompt import get_system_prompt, get_user_prompt
 from synphora.sse import RunFinishedEvent, RunStartedEvent, SseEvent, TextMessageEvent
 from synphora.tool import ArticleEvaluator
 
@@ -184,32 +185,11 @@ async def generate_agent_response(
 
     original_artifact = artifact_manager.get_original_artifact()
 
-    system_prompt = """
-你是 Synphora，一个智能写作助手。
-"""
-
-    user_prompt = f"""
-## 任务描述
-
-根据用户的请求，优先使用工具来完成任务。如果找不到合适的工具，请直接说明你无法完成任务。
-
-## 注意事项
-
-1. 请勿向用户透露「Artifact」「工具」等内部概念，会引起用户的疑惑。
-
-- 正例：我将为你生成文章评价。
-- 反例：根据您提供的 Artifact ID，我将使用评价工具来分析文章质量。
-- 正例：评价结果已生成。
-- 反例：评价结果已生成，Artifact ID 为：ae259520。
-
-2. 工具的结果会通过 Artifact 的形式展示给用户，所以请勿赘述工具的结果，只需告诉用户结果已生成。
-
-## 任务信息
-
-用户文章原文的 Artifact ID: {original_artifact.id}
-
-用户请求：{request.message}
-"""
+    system_prompt = get_system_prompt()
+    user_prompt = get_user_prompt(
+        original_artifact_id=original_artifact.id,
+        user_message=request.message
+    )
 
     initial_messages = [
         SystemMessage(content=system_prompt),
