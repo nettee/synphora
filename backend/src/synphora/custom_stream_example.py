@@ -11,14 +11,12 @@ import json
 import time
 from typing import Any
 
+from dotenv import load_dotenv
 from langchain_core.tools import tool
-from langgraph.prebuilt import create_react_agent
 from langgraph.config import get_stream_writer
+from langgraph.prebuilt import create_react_agent
 
 from synphora.llm import create_llm_client
-
-from dotenv import load_dotenv
-
 
 load_dotenv()
 
@@ -35,29 +33,35 @@ async def my_long_tool(task: str, steps: int = 6) -> str:
         # 模拟耗时
         await asyncio.sleep(0.35)
         # 进度事件
-        writer({
-            "channel": "tool",
-            "tool": "my_long_tool",
-            "type": "progress",
-            "step": i,
-            "total": steps,
-            "progress": round(i / steps, 4),
-            "message": f"[{i}/{steps}] 正在处理：{task}",
-        })
+        writer(
+            {
+                "channel": "tool",
+                "tool": "my_long_tool",
+                "type": "progress",
+                "step": i,
+                "total": steps,
+                "progress": round(i / steps, 4),
+                "message": f"[{i}/{steps}] 正在处理：{task}",
+            }
+        )
         # 分片数据（可选）
-        writer({
+        writer(
+            {
+                "channel": "tool",
+                "tool": "my_long_tool",
+                "type": "chunk",
+                "data": f"片段 {i}: {task}",
+            }
+        )
+
+    writer(
+        {
             "channel": "tool",
             "tool": "my_long_tool",
-            "type": "chunk",
-            "data": f"片段 {i}: {task}",
-        })
-
-    writer({
-        "channel": "tool",
-        "tool": "my_long_tool",
-        "type": "done",
-        "message": f"任务「{task}」完成。",
-    })
+            "type": "done",
+            "message": f"任务「{task}」完成。",
+        }
+    )
     return f"【工具完成】{task}（共 {steps} 步）"
 
 

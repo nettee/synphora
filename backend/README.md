@@ -1,3 +1,22 @@
+## 代码格式化
+
+使用便捷脚本：
+```bash
+./ruff.sh check    # 检查代码质量
+./ruff.sh format   # 格式化代码
+./ruff.sh fix      # 自动修复问题
+./ruff.sh all      # 执行所有操作
+```
+
+或者直接使用 uv 命令：
+```bash
+uv run ruff check src/          # 检查
+uv run ruff format src/         # 格式化
+uv run ruff check --fix src/    # 修复
+```
+
+## 服务启动
+
 目前是简单的 HTTP SSE 服务
 
 启动服务：

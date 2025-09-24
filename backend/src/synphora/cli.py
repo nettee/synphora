@@ -1,5 +1,6 @@
 import uvicorn
 
+
 def dev():
     """Starts the development server."""
     uvicorn.run(
@@ -9,9 +10,7 @@ def dev():
         port=8000,
     )
 
+
 def server():
     """Starts the server."""
-    uvicorn.run(
-        "synphora.server:app",
-        reload=True
-    )
+    uvicorn.run("synphora.server:app", reload=True)

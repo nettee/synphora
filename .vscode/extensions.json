@@ -1,0 +1,29 @@
+{
+  "recommendations": [
+    // Python 开发必备
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+
+    // Ruff - Python 代码格式化和检查
+    "charliermarsh.ruff",
+
+    // 前端开发
+    "bradlc.vscode-tailwindcss",
+    "esbenp.prettier-vscode",
+    "ms-vscode.vscode-typescript-next",
+
+    // 通用工具
+    "ms-vscode.vscode-json",
+    "redhat.vscode-yaml",
+    "ms-vscode.vscode-markdown",
+
+    // Git 工具
+    "eamodio.gitlens"
+  ],
+  "unwantedRecommendations": [
+    // 避免与 Ruff 冲突的扩展
+    "ms-python.flake8",
+    "ms-python.pylint",
+    "ms-python.black-formatter"
+  ]
+}

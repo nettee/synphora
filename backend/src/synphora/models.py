@@ -1,6 +1,6 @@
-from typing import Optional
-from pydantic import BaseModel
 from enum import Enum
+
+from pydantic import BaseModel
 
 
 class ArtifactType(str, Enum):
@@ -18,7 +18,7 @@ class ArtifactData(BaseModel):
     role: ArtifactRole
     type: ArtifactType
     title: str
-    description: Optional[str] = None
+    description: str | None = None
     content: str
     created_at: str
     updated_at: str

@@ -1,0 +1,54 @@
+{
+  // Python 配置
+  "python.defaultInterpreterPath": "./backend/.venv/bin/python",
+
+  // 使用 Ruff 作为默认的格式化工具
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports.ruff": "explicit",
+      "source.fixAll.ruff": "explicit"
+    },
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+
+  // Ruff 扩展配置
+  "ruff.lint.enable": true,
+  "ruff.format.enable": true,
+  "ruff.organizeImports": true,
+  "ruff.fixAll": true,
+
+  // 配置 Ruff 可执行文件路径 (使用项目中的 uv)
+  "ruff.path": ["./backend/.venv/bin/ruff"],
+  "ruff.interpreter": ["./backend/.venv/bin/python"],
+
+  // 工作区设置
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.typeCheckingMode": "basic",
+
+  // 文件保存时的行为
+  "editor.formatOnSave": true,
+  "editor.trimAutoWhitespace": true,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+
+  // 排除一些文件和目录
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.ruff_cache": true,
+    "**/node_modules": true,
+    "**/.git": true,
+    "**/.DS_Store": true
+  },
+
+  // 搜索时排除
+  "search.exclude": {
+    "**/__pycache__": true,
+    "**/.ruff_cache": true,
+    "**/node_modules": true,
+    "**/.venv": true,
+    "**/dist": true,
+    "**/build": true
+  }
+}

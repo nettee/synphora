@@ -1,8 +1,7 @@
 import os
-from typing import List, Optional
 
-from synphora.models import ArtifactData, ArtifactType, ArtifactRole
 from synphora.file_storage import FileStorage
+from synphora.models import ArtifactData, ArtifactRole, ArtifactType
 
 
 class ArtifactManager:
@@ -10,14 +9,14 @@ class ArtifactManager:
         # 从环境变量获取存储路径，默认为 tests/data/store
         storage_path = os.getenv('SYNPHORA_STORAGE_PATH', 'tests/data/store')
         self._storage = FileStorage(storage_path)
-    
+
     def create_artifact(
-        self, 
-        title: str, 
-        content: str, 
+        self,
+        title: str,
+        content: str,
         artifact_type: ArtifactType = ArtifactType.ORIGINAL,
         role: ArtifactRole = ArtifactRole.USER,
-        description: Optional[str] = None
+        description: str | None = None,
     ) -> ArtifactData:
         """创建新的 artifact"""
         return self._storage.create_artifact(
@@ -25,14 +24,14 @@ class ArtifactManager:
             content=content,
             artifact_type=artifact_type,
             role=role,
-            description=description
+            description=description,
         )
-    
-    def get_artifact(self, artifact_id: str) -> Optional[ArtifactData]:
+
+    def get_artifact(self, artifact_id: str) -> ArtifactData | None:
         """根据 ID 获取 artifact"""
         return self._storage.get_artifact(artifact_id)
-    
-    def list_artifacts(self) -> List[ArtifactData]:
+
+    def list_artifacts(self) -> list[ArtifactData]:
         """获取所有 artifacts"""
         return self._storage.list_artifacts()
 
@@ -42,26 +41,26 @@ class ArtifactManager:
             if artifact.type == ArtifactType.ORIGINAL:
                 return artifact
         raise ValueError("No original artifact found")
-    
+
     def update_artifact(
-        self, 
-        artifact_id: str, 
-        title: Optional[str] = None,
-        content: Optional[str] = None,
-        description: Optional[str] = None
-    ) -> Optional[ArtifactData]:
+        self,
+        artifact_id: str,
+        title: str | None = None,
+        content: str | None = None,
+        description: str | None = None,
+    ) -> ArtifactData | None:
         """更新 artifact"""
         return self._storage.update_artifact(
             artifact_id=artifact_id,
             title=title,
             content=content,
-            description=description
+            description=description,
         )
-    
+
     def delete_artifact(self, artifact_id: str) -> bool:
         """删除 artifact"""
         return self._storage.delete_artifact(artifact_id)
-    
+
     def clear_all(self):
         """清空所有 artifacts（主要用于测试）"""
         self._storage.clear_all()

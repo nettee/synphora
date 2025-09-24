@@ -1,15 +1,17 @@
-from langchain_core.tools import tool
-from langchain_core.tools import Tool
 import uuid
 
-from synphora.sse import (
-    ArtifactContentStartEvent, ArtifactContentChunkEvent, 
-    ArtifactContentCompleteEvent, ArtifactListUpdatedEvent
-)
-from synphora.llm import create_llm_client
+from langchain_core.tools import Tool, tool
+
 from synphora.artifact_manager import artifact_manager
-from synphora.models import ArtifactType, ArtifactRole, ArtifactData
 from synphora.langgraph_sse import write_sse_event
+from synphora.llm import create_llm_client
+from synphora.models import ArtifactData, ArtifactRole, ArtifactType
+from synphora.sse import (
+    ArtifactContentChunkEvent,
+    ArtifactContentCompleteEvent,
+    ArtifactContentStartEvent,
+    ArtifactListUpdatedEvent,
+)
 
 
 def generate_id() -> str:
@@ -25,7 +27,7 @@ class ArticleEvaluator:
         return [
             cls.evaluate_article,
         ]
-    
+
     @staticmethod
     @tool
     def evaluate_article(original_artifact_id: str) -> str:
@@ -40,17 +42,19 @@ class ArticleEvaluator:
         """
 
         print(f'evaluate_article, original_artifact_id: {original_artifact_id}')
-        
+
         # 1. 发送ARTIFACT_CONTENT_START事件
         generated_artifact_id = generate_id()
         artifact_title = "文章评价"
-        
-        write_sse_event(ArtifactContentStartEvent.new(
+
+        write_sse_event(
+            ArtifactContentStartEvent.new(
                 artifact_id=generated_artifact_id,
                 title=artifact_title,
-                artifact_type=ArtifactType.COMMENT.value
-        ))
-        
+                artifact_type=ArtifactType.COMMENT.value,
+            )
+        )
+
         # 2. 准备评价prompt
         original_artifact = artifact_manager.get_artifact(original_artifact_id)
 
@@ -59,11 +63,11 @@ class ArticleEvaluator:
 <name>{artifact.title}</name>
 <content>{artifact.content}</content>
 </file>"""
-        
+
         article_content = format_artifact(original_artifact)
 
         system_prompt = """你是一位顶尖的内容分析师和资深编辑。"""
-        
+
         user_prompt = f"""请帮我评价这篇文章。
 
 ## 评价步骤
@@ -110,30 +114,33 @@ class ArticleEvaluator:
 
 {article_content}
         """
-        
+
         # 3. 调用LLM并流式生成内容
-        from langchain_core.messages import SystemMessage, HumanMessage
-        
+        from langchain_core.messages import HumanMessage, SystemMessage
+
         messages = [
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_prompt),
         ]
-        
+
         llm = create_llm_client()
         llm_result_content = ''
-        
+
         # 4. 流式发送ARTIFACT_CONTENT_CHUNK事件 - 实时流式处理
         for chunk in llm.stream(messages):
             if chunk.content:
-                write_sse_event(ArtifactContentChunkEvent.new(
-                    artifact_id=generated_artifact_id, 
-                    content=chunk.content
-                ))
+                write_sse_event(
+                    ArtifactContentChunkEvent.new(
+                        artifact_id=generated_artifact_id, content=chunk.content
+                    )
+                )
                 llm_result_content += chunk.content
-        
+
         # 5. 发送ARTIFACT_CONTENT_COMPLETE事件
-        write_sse_event(ArtifactContentCompleteEvent.new(artifact_id=generated_artifact_id))
-        
+        write_sse_event(
+            ArtifactContentCompleteEvent.new(artifact_id=generated_artifact_id)
+        )
+
         # 6. 创建artifact并发送ARTIFACT_LIST_UPDATED事件
         artifact = artifact_manager.create_artifact(
             title=artifact_title,
@@ -141,13 +148,14 @@ class ArticleEvaluator:
             artifact_type=ArtifactType.COMMENT,
             role=ArtifactRole.ASSISTANT,
         )
-        
-        write_sse_event(ArtifactListUpdatedEvent.new(
-            artifact_id=artifact.id,
-            title=artifact.title,
-            artifact_type=artifact.type.value,
-            role=artifact.role.value,
-        ))
-        
-        return f"【工具完成】文章评价（artifact_id: {generated_artifact_id}）"
 
+        write_sse_event(
+            ArtifactListUpdatedEvent.new(
+                artifact_id=artifact.id,
+                title=artifact.title,
+                artifact_type=artifact.type.value,
+                role=artifact.role.value,
+            )
+        )
+
+        return f"【工具完成】文章评价（artifact_id: {generated_artifact_id}）"

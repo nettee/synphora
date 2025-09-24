@@ -26,9 +26,82 @@ dev = [
     "httpx>=0.28.1",
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
+    "ruff>=0.8.0",
 ]
 
 [project.scripts]
 workflow = "synphora.workflow:main"
 server = "synphora.cli:server"
 dev = "synphora.cli:dev"
+
+[tool.ruff]
+# 排除指定目录
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "__pycache__",
+]
+
+# 每行最大字符数
+line-length = 88
+
+# 目标 Python 版本
+target-version = "py313"
+
+[tool.ruff.lint]
+# 启用的规则集
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+
+# 忽略的规则
+ignore = [
+    "E501",  # 行太长，由 ruff format 处理
+    "B008",  # 不要在函数调用中使用可变默认参数
+    "W191",  # 缩进包含制表符
+]
+
+# 允许自动修复的规则
+fixable = ["ALL"]
+unfixable = []
+
+# 允许未使用变量名以 `_` 开头
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.format]
+# 保持原有的引号样式，不进行转换
+quote-style = "preserve"
+
+# 缩进类型
+indent-style = "space"
+
+# 尊重魔术注释，如 `# fmt: skip`
+skip-magic-trailing-comma = false
+
+# 自动检测行结束符
+line-ending = "auto"
