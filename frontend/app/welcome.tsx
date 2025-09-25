@@ -55,9 +55,7 @@ export default function WelcomePage({ onWelcomeComplete }: WelcomePageProps) {
         );
 
         // 更新进度到100%
-        setUploadedFile((prev) =>
-          prev ? { ...prev, progress: 100 } : prev
-        );
+        setUploadedFile((prev) => (prev ? { ...prev, progress: 100 } : prev));
 
         // 更新为完成状态
         setUploadedFile((prev) =>
@@ -131,7 +129,7 @@ export default function WelcomePage({ onWelcomeComplete }: WelcomePageProps) {
 
       // 添加生成进度显示
       const generatingFile: UploadedFile = {
-        file: new File([""], "AI生成示例文章.txt", { type: "text/plain" }),
+        file: new File([""], "示例文章.md", { type: "text/markdown" }),
         status: "uploading",
         progress: 0,
       };
@@ -144,7 +142,7 @@ export default function WelcomePage({ onWelcomeComplete }: WelcomePageProps) {
           prev && prev.status === "uploading"
             ? {
                 ...prev,
-                progress: Math.min(prev.progress + Math.random() * 15, 90),
+                progress: Math.min(prev.progress + Math.random() * 5, 98),
               }
             : prev
         );
@@ -251,6 +249,7 @@ export default function WelcomePage({ onWelcomeComplete }: WelcomePageProps) {
             <div className="flex gap-2">
               <Button
                 onClick={handleSelectFiles}
+                disabled={isGenerating}
                 variant="outline"
                 className="font-medium"
               >
@@ -282,7 +281,7 @@ export default function WelcomePage({ onWelcomeComplete }: WelcomePageProps) {
           {uploadedFile && (
             <div className="bg-card border border-border rounded-lg p-6">
               <h3 className="text-base font-medium text-foreground mb-4">
-                文件处理中
+                文章生成中
               </h3>
               <div className="space-y-4">
                 <div className="space-y-2">

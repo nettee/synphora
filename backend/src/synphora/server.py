@@ -162,25 +162,13 @@ async def generate_sample_article(request: GenerateSampleArticleRequest):
         # 创建 LLM 客户端
         llm = create_llm_client()
 
-        # 根据是否提供了主题来生成不同的提示
-        if request.topic:
-            prompt = f"""请生成一篇关于"{request.topic}"的中文文章，要求如下：
-1. 文章长度：500-800字
-2. 结构清晰：包含引言、主体（2-3个要点）和结论
-3. 语言流畅，观点明确
+        prompt = """请生成一篇关于"生成式 AI 将会如何改变我们的生活"的中文文章，要求如下：
+1. 文件格式：Markdown 格式，带有 h1 的标题，其他为正文
+2. 文章长度：500-800字
+3. 文章结构：包含引言、主体（3个论点）和结论，共 5 段。三个论点段开头有一句加粗的概括句。
 4. 适合作为文章分析和润色的示例
 5. 只返回文章内容，不要包含标题或其他额外说明
-
-请开始生成文章："""
-        else:
-            prompt = """请生成一篇关于"人工智能在现代社会中的应用与挑战"的中文文章，要求如下：
-1. 文章长度：500-800字
-2. 结构清晰：包含引言、主体（2-3个要点）和结论
-3. 语言流畅，观点明确
-4. 适合作为文章分析和润色的示例
-5. 只返回文章内容，不要包含标题或其他额外说明
-
-请开始生成文章："""
+"""
 
         # 调用 LLM 生成文章
         print("🔄 Generating article content with LLM...")
@@ -191,11 +179,10 @@ async def generate_sample_article(request: GenerateSampleArticleRequest):
             raise HTTPException(status_code=500, detail="Failed to generate article content")
 
         # 创建 artifact
-        title = f"AI生成示例文章_{request.topic or '人工智能应用与挑战'}"
+        title = "示例文章.md"
         artifact = artifact_manager.create_artifact(
             title=title,
             content=generated_content,
-            description=f"AI生成的示例文章，主题：{request.topic or '人工智能在现代社会中的应用与挑战'}",
             role=ArtifactRole.ASSISTANT,
             artifact_type=ArtifactType.ORIGINAL,
         )
