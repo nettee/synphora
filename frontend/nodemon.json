@@ -1,0 +1,9 @@
+{
+  "watch": ["../.env"],
+  "exec": "pnpm dev:next",
+  "ext": "env",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "delay": 500
+}
