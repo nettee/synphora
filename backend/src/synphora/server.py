@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from synphora.agent import AgentRequest, generate_agent_response
 from synphora.artifact_manager import artifact_manager
+from synphora.llm import create_llm_client
 from synphora.models import ArtifactData, ArtifactRole, ArtifactType
 from synphora.sse import EventType, SseEvent
 
@@ -39,6 +40,10 @@ class CreateArtifactRequest(BaseModel):
 
 class ArtifactListResponse(BaseModel):
     artifacts: list[ArtifactData]
+
+
+class GenerateSampleArticleRequest(BaseModel):
+    topic: str | None = None
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -146,3 +151,58 @@ async def delete_artifact(artifact_id: str):
         raise HTTPException(status_code=404, detail="Artifact not found")
     print(f"✅ delete_artifact completed, artifact ID '{artifact_id}' deleted")
     return {"message": "Artifact deleted successfully"}
+
+
+@app.post("/artifacts/generate-sample", response_model=ArtifactData)
+async def generate_sample_article(request: GenerateSampleArticleRequest):
+    """Generate a sample article and create it as an artifact"""
+    print(f"🤖 Starting generate_sample_article operation with topic: {request.topic}")
+
+    try:
+        # 创建 LLM 客户端
+        llm = create_llm_client()
+
+        # 根据是否提供了主题来生成不同的提示
+        if request.topic:
+            prompt = f"""请生成一篇关于"{request.topic}"的中文文章，要求如下：
+1. 文章长度：500-800字
+2. 结构清晰：包含引言、主体（2-3个要点）和结论
+3. 语言流畅，观点明确
+4. 适合作为文章分析和润色的示例
+5. 只返回文章内容，不要包含标题或其他额外说明
+
+请开始生成文章："""
+        else:
+            prompt = """请生成一篇关于"人工智能在现代社会中的应用与挑战"的中文文章，要求如下：
+1. 文章长度：500-800字
+2. 结构清晰：包含引言、主体（2-3个要点）和结论
+3. 语言流畅，观点明确
+4. 适合作为文章分析和润色的示例
+5. 只返回文章内容，不要包含标题或其他额外说明
+
+请开始生成文章："""
+
+        # 调用 LLM 生成文章
+        print("🔄 Generating article content with LLM...")
+        response = llm.invoke(prompt)
+        generated_content = response.content
+
+        if not generated_content:
+            raise HTTPException(status_code=500, detail="Failed to generate article content")
+
+        # 创建 artifact
+        title = f"AI生成示例文章_{request.topic or '人工智能应用与挑战'}"
+        artifact = artifact_manager.create_artifact(
+            title=title,
+            content=generated_content,
+            description=f"AI生成的示例文章，主题：{request.topic or '人工智能在现代社会中的应用与挑战'}",
+            role=ArtifactRole.ASSISTANT,
+            artifact_type=ArtifactType.ORIGINAL,
+        )
+
+        print(f"✅ generate_sample_article completed, created artifact ID: {artifact.id}")
+        return artifact
+
+    except Exception as e:
+        print(f"❌ generate_sample_article failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate sample article: {str(e)}")

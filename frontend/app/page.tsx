@@ -21,12 +21,12 @@ export default function Home() {
     return <SynphoraPage />;
   }
 
-  const handleFilesUploaded = () => {
+  const onWelcomeComplete = () => {
     setCurrentPage(CurrentPage.MAIN);
   };
 
   if (currentPage === CurrentPage.WELCOME) {
-    return <WelcomePage onFilesUploaded={handleFilesUploaded} />;
+    return <WelcomePage onWelcomeComplete={onWelcomeComplete} />;
   } else if (currentPage === CurrentPage.MAIN) {
     return <SynphoraPage />;
   } else {
